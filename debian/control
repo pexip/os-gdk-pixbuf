@@ -5,8 +5,9 @@
 Source: gdk-pixbuf
 Section: libs
 Priority: optional
-Maintainer: Debian GNOME Maintainers <pkg-gnome-maintainers@lists.alioth.debian.org>
-Uploaders: Andreas Henriksson <andreas@fatal.se>, Emilio Pozuelo Monfort <pochu@debian.org>, Laurent Bigonville <bigon@debian.org>, Michael Biebl <biebl@debian.org>
+Maintainer: Pexip AS <packaging@pexip.com>
+XSBC-Pexip-Original-Maintainer: Debian GNOME Maintainers <pkg-gnome-maintainers@lists.alioth.debian.org>
+XSBC-Pexip-Original-Uploaders: Andreas Henriksson <andreas@fatal.se>, Emilio Pozuelo Monfort <pochu@debian.org>, Laurent Bigonville <bigon@debian.org>, Michael Biebl <biebl@debian.org>
 Build-Depends: cdbs (>= 0.4.93),
                debhelper (>= 9),
                dh-autoreconf,
@@ -27,6 +28,7 @@ Homepage: http://www.gtk.org/
 Vcs-Svn: svn://anonscm.debian.org/pkg-gnome/desktop/unstable/gdk-pixbuf/
 Vcs-Browser: http://svn.debian.org/viewvc/pkg-gnome/desktop/unstable/gdk-pixbuf/
 XS-Testsuite: autopkgtest
+XS-Pexip-Upstream: http://ftp.debian.org/debian/ jessie
 
 Package: libgdk-pixbuf2.0-0
 Architecture: any

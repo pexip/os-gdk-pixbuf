@@ -1,3 +1,9 @@
+gdk-pixbuf (2.31.1-2+deb8u5pexip1) pexip; urgency=medium
+
+  * Prepare Pexip packaging
+
+ -- Vincent Sanders <vince@pexip.com>  Fri, 06 Oct 2017 12:19:08 +0000
+
 gdk-pixbuf (2.31.1-2+deb8u5) jessie-security; urgency=high
 
   * Non-maintainer upload by the Security Team.
