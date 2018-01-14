@@ -19,6 +19,9 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "config.h"
+#include <glib/gi18n-lib.h>
+
 #define INITGUID
 #include "io-gdip-utils.h"
 
@@ -96,6 +99,15 @@ gdk_pixbuf__gdip_image_save_JPEG (FILE         *f,
   return gdk_pixbuf__gdip_image_save_JPEG_to_callback (gdip_save_to_file_callback, f, pixbuf, keys, values, error);
 }
 
+static gboolean
+gdk_pixbuf__gdip_is_save_option_supported_JPEG (const gchar *option_key)
+{
+  if (g_strcmp0 (option_key, "quality") == 0)
+    return TRUE;
+
+  return FALSE;
+}
+
 #ifndef INCLUDE_gdiplus
 #define MODULE_ENTRY(function) G_MODULE_EXPORT void function
 #else
@@ -108,6 +120,7 @@ MODULE_ENTRY (fill_vtable) (GdkPixbufModule *module)
 
   module->save_to_callback = gdk_pixbuf__gdip_image_save_JPEG_to_callback;
   module->save = gdk_pixbuf__gdip_image_save_JPEG; /* for gtk < 2.14, you need to implement both. otherwise gdk-pixbuf-queryloaders fails */
+  module->is_save_option_supported = gdk_pixbuf__gdip_is_save_option_supported_JPEG;
 }
 
 MODULE_ENTRY (fill_info) (GdkPixbufFormat *info)
@@ -131,7 +144,7 @@ MODULE_ENTRY (fill_info) (GdkPixbufFormat *info)
 
   info->name        = "jpeg";
   info->signature   = (GdkPixbufModulePattern *) signature;
-  info->description = N_("The JPEG image format");
+  info->description = NC_("image format", "JPEG");
   info->mime_types  = (gchar **) mime_types;
   info->extensions  = (gchar **) extensions;
   info->flags       = GDK_PIXBUF_FORMAT_WRITABLE | GDK_PIXBUF_FORMAT_THREADSAFE;

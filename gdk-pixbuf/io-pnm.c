@@ -325,7 +325,15 @@ pnm_read_header (PnmLoaderContext *context)
 		
 		if (retval != PNM_OK) 
 			return retval;
-		
+
+		if (width > G_MAXINT) {
+			g_set_error_literal (context->error,
+                                             GDK_PIXBUF_ERROR,
+                                             GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
+                                             _("PNM file has an invalid width"));
+			return PNM_FATAL_ERR;
+		}
+
 		if (!width) {
 			g_set_error_literal (context->error,
                                              GDK_PIXBUF_ERROR,
@@ -346,7 +354,15 @@ pnm_read_header (PnmLoaderContext *context)
 		
 		if (retval != PNM_OK)
 			return retval;
-		
+
+		if (height > G_MAXINT) {
+			g_set_error_literal (context->error,
+                                             GDK_PIXBUF_ERROR,
+                                             GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
+                                             _("PNM file has an invalid height"));
+			return PNM_FATAL_ERR;
+		}
+
 		if (!height) {
 			g_set_error_literal (context->error,
                                              GDK_PIXBUF_ERROR,
@@ -1074,7 +1090,7 @@ MODULE_ENTRY (fill_info) (GdkPixbufFormat *info)
 
 	info->name = "pnm";
 	info->signature = (GdkPixbufModulePattern *) signature;
-	info->description = N_("The PNM/PBM/PGM/PPM image format family");
+	info->description = NC_("image format", "PNM/PBM/PGM/PPM");
 	info->mime_types = (gchar **) mime_types;
 	info->extensions = (gchar **) extensions;
 	info->flags = GDK_PIXBUF_FORMAT_THREADSAFE;

@@ -62,10 +62,8 @@
  * The second signal, #GdkPixbufLoader::area-prepared, will be emitted as
  * soon as the pixbuf of the desired has been allocated. You can obtain it
  * by calling gdk_pixbuf_loader_get_pixbuf(). If you want to use it, simply
- * ref it.  In addition, no actual information will be passed in yet, so the
- * pixbuf can be safely filled with any temporary graphics (or an initial
- * color) as needed.  You can also call gdk_pixbuf_loader_get_pixbuf() later
- * and get the same pixbuf.
+ * ref it. You can also call gdk_pixbuf_loader_get_pixbuf() later and get
+ * the same pixbuf.
  * 
  * The last signal, #GdkPixbufLoader::area-updated, gets emitted every time
  * a region is updated. This way you can update a partially completed image.
@@ -332,7 +330,7 @@ gdk_pixbuf_loader_prepare (GdkPixbuf          *pixbuf,
         else
                 anim = gdk_pixbuf_non_anim_new (pixbuf);
   
-	if (priv->needs_scale) {
+	if (priv->needs_scale && width != 0 && height != 0) {
 		priv->animation  = GDK_PIXBUF_ANIMATION (_gdk_pixbuf_scaled_anim_new (anim,
                                          (double) priv->width / width,
                                          (double) priv->height / height,
@@ -518,7 +516,10 @@ gdk_pixbuf_loader_write (GdkPixbufLoader *loader,
                         buf += eaten;
                 }
   
-        if (count > 0 && priv->image_module->load_increment)
+        /* By this point, we expect the image_module to have been loaded. */
+        g_assert (count == 0 || priv->image_module != NULL);
+
+        if (count > 0 && priv->image_module->load_increment != NULL)
                 {
                         if (!priv->image_module->load_increment (priv->context, buf, count,
                                                                  error))
@@ -751,7 +752,7 @@ gdk_pixbuf_loader_get_pixbuf (GdkPixbufLoader *loader)
  * return %NULL.
  *
  * Return value: (transfer none): The #GdkPixbufAnimation that the loader is loading, or %NULL if
- not enough data has been read to determine the information.
+ * not enough data has been read to determine the information.
 **/
 GdkPixbufAnimation *
 gdk_pixbuf_loader_get_animation (GdkPixbufLoader *loader)

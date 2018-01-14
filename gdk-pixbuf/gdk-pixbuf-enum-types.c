@@ -1,6 +1,8 @@
 
 /* Generated data (by glib-mkenums) */
 
+#include "config.h"
+
 #include <gdk-pixbuf/gdk-pixbuf.h>
 
 /* enumerations from "gdk-pixbuf-core.h" */
@@ -48,6 +50,7 @@ gdk_pixbuf_error_get_type (void)
             { GDK_PIXBUF_ERROR_UNKNOWN_TYPE, "GDK_PIXBUF_ERROR_UNKNOWN_TYPE", "unknown-type" },
             { GDK_PIXBUF_ERROR_UNSUPPORTED_OPERATION, "GDK_PIXBUF_ERROR_UNSUPPORTED_OPERATION", "unsupported-operation" },
             { GDK_PIXBUF_ERROR_FAILED, "GDK_PIXBUF_ERROR_FAILED", "failed" },
+            { GDK_PIXBUF_ERROR_INCOMPLETE_ANIMATION, "GDK_PIXBUF_ERROR_INCOMPLETE_ANIMATION", "incomplete-animation" },
             { 0, NULL, NULL }
         };
         etype = g_enum_register_static (g_intern_static_string ("GdkPixbufError"), values);

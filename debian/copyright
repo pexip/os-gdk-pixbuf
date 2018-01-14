@@ -2,7 +2,7 @@ This work was packaged for Debian by:
 
     Robert Ancell <robert.ancell@canonical.com> on Tue, 13 Jul 2010 15:04:22 +1000
 
-It was downloaded from http://ftp.gnome.org/pub/GNOME/sources/gdk-pixbuf/
+It was downloaded from https://download.gnome.org/sources/gdk-pixbuf/
 
 Upstream Authors:
 
@@ -208,4 +208,3 @@ The Debian packaging is:
     Copyright (C) 2010 Robert Ancell <robert.ancell@canonical.com> and is
     licensed under the LGPL version 2 of the licence, or (at your option) any 
     later version., see `/usr/share/common-licenses/LGPL-2'.
-

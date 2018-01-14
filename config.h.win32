@@ -110,7 +110,7 @@
 #define PACKAGE_NAME "gdk-pixbuf"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "gdk-pixbuf 2.31.1"
+#define PACKAGE_STRING "gdk-pixbuf 2.36.5"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "gdk-pixbuf"
@@ -119,7 +119,7 @@
 #define PACKAGE_URL "http://www.gtk.org/"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "2.31.1"
+#define PACKAGE_VERSION "2.36.5"
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
@@ -145,6 +145,13 @@
 
 /* Number of bits in a file offset, on hosts where this is settable. */
 /*#undef _FILE_OFFSET_BITS*/
+
+/* defines how to decorate public symbols while building */
+#ifdef _MSC_VER
+#define _GDK_PIXBUF_EXTERN __declspec(dllexport) extern
+#else
+#define _GDK_PIXBUF_EXTERN __attribute__((visibility("default"))) __declspec(dllexport) extern
+#endif
 
 /* Define for large files, on AIX-style hosts. */
 /*#undef _LARGE_FILES*/

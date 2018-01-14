@@ -14,9 +14,9 @@ AC_PREREQ([2.63])
 #   gdk_pixbuf_binary_age = 0;
 
 m4_define([gdk_pixbuf_major_version], [2])
-m4_define([gdk_pixbuf_minor_version], [31])
-m4_define([gdk_pixbuf_micro_version], [1])
-m4_define([gdk_pixbuf_interface_age], [1])
+m4_define([gdk_pixbuf_minor_version], [36])
+m4_define([gdk_pixbuf_micro_version], [5])
+m4_define([gdk_pixbuf_interface_age], [5])
 m4_define([gdk_pixbuf_binary_age],
           [m4_eval(100 * gdk_pixbuf_minor_version + gdk_pixbuf_micro_version)])
 m4_define([gdk_pixbuf_version],
@@ -26,7 +26,7 @@ m4_define([gdk_pixbuf_binary_version], [2.10.0])
 
 
 # required versions of other packages
-m4_define([glib_required_version], [2.37.6])
+m4_define([glib_required_version], [2.48.0])
 
 AC_INIT([gdk-pixbuf], [gdk_pixbuf_version],
         [http://bugzilla.gnome.org/enter_bug.cgi?product=gdk-pixbuf],
@@ -129,19 +129,12 @@ AC_SUBST(EXE_MANIFEST_ARCHITECTURE)
 case $host in
   *-*-linux*)
     os_linux=yes
+    AC_DEFINE(OS_LINUX, 1, [Define to 1 if it's a Linux platform])
+    ;;
+  *-*-darwin*)
+    AC_DEFINE(OS_DARWIN, 1, [Define to 1 if it's a darwin platform])
     ;;
 esac
-
-if test "$os_win32" = "yes"; then
-  if test x$enable_static = xyes -o x$enable_static = x; then
-    AC_MSG_WARN([Disabling static library build, must build as DLL on Windows.])
-    enable_static=no
-  fi
-  if test x$enable_shared = xno; then
-    AC_MSG_WARN([Enabling shared library build, must build as DLL on Windows.])
-  fi
-  enable_shared=yes
-fi
 
 dnl Initialize libtool
 LT_PREREQ([2.2.6])
@@ -335,7 +328,7 @@ if test "$gtk_ok" = "yes"; then
 fi
 
 # i18n stuff
-AM_GNU_GETTEXT_VERSION([0.17])
+AM_GNU_GETTEXT_VERSION([0.19])
 AM_GNU_GETTEXT([external])
 
 GETTEXT_PACKAGE="$PACKAGE"
@@ -675,7 +668,7 @@ fi
 # because some important apps like GIMP need to read and write
 # arbitrary tEXt chunks which doesn't seem to be possible through GDI+
 
-all_loaders="ani,icns,pcx,ras,tga,png,pnm,wbmp,xbm,xpm,qtif"
+all_loaders="ani,icns,tga,png,pnm,xbm,xpm,qtif"
 if test x$with_libjasper = xyes; then
   all_loaders="$all_loaders,jasper"
 fi
@@ -732,18 +725,15 @@ AC_SUBST(INCLUDED_LOADER_DEFINE)
 
 AM_CONDITIONAL(INCLUDE_PNG, [test x"$INCLUDE_png" = xyes])
 AM_CONDITIONAL(INCLUDE_BMP, [test x"$INCLUDE_bmp" = xyes])
-AM_CONDITIONAL(INCLUDE_WBMP, [test x"$INCLUDE_wbmp" = xyes])
 AM_CONDITIONAL(INCLUDE_GIF, [test x"$INCLUDE_gif" = xyes])
 AM_CONDITIONAL(INCLUDE_ICO, [test x"$INCLUDE_ico" = xyes])
 AM_CONDITIONAL(INCLUDE_ANI, [test x"$INCLUDE_ani" = xyes])
 AM_CONDITIONAL(INCLUDE_JPEG, [test x"$INCLUDE_jpeg" = xyes])
 AM_CONDITIONAL(INCLUDE_PNM, [test x"$INCLUDE_pnm" = xyes])
-AM_CONDITIONAL(INCLUDE_RAS, [test x"$INCLUDE_ras" = xyes])
 AM_CONDITIONAL(INCLUDE_TIFF, [test x"$INCLUDE_tiff" = xyes])
 AM_CONDITIONAL(INCLUDE_XPM, [test x"$INCLUDE_xpm" = xyes])
 AM_CONDITIONAL(INCLUDE_XBM, [test x"$INCLUDE_xbm" = xyes])
 AM_CONDITIONAL(INCLUDE_TGA, [test x"$INCLUDE_tga" = xyes])
-AM_CONDITIONAL(INCLUDE_PCX, [test x"$INCLUDE_pcx" = xyes])
 AM_CONDITIONAL(INCLUDE_ICNS, [test x"$INCLUDE_icns" = xyes])
 AM_CONDITIONAL(INCLUDE_JASPER, [test x"$INCLUDE_jasper" = xyes])
 AM_CONDITIONAL(INCLUDE_QTIF, [test x"$INCLUDE_qtif" = xyes])
@@ -900,22 +890,7 @@ fi
 
 AM_CONDITIONAL(USE_MMX, test x$use_mmx_asm = xyes)
 
-REBUILD_PNGS=
-if test -z "$LIBPNG" && test x"$os_win32" = xno -o x$with_gdiplus = xno; then
-  REBUILD_PNGS=#
-fi
-
-dnl Look for a host system's gdk-pixbuf-csource if we are cross-compiling
-
 AM_CONDITIONAL(CROSS_COMPILING, test $cross_compiling = yes)
-
-if test $cross_compiling = yes; then
-  AC_PATH_PROG(GDK_PIXBUF_CSOURCE, gdk-pixbuf-csource, no)
-  AC_PATH_PROG(GTK_UPDATE_ICON_CACHE, gtk-update-icon-cache, no)
-  if test x$GTK_UPDATE_ICON_CACHE = xno; then
-    REBUILD_PNGS=#
-  fi
-fi
 
 GDK_PIXBUF_PACKAGES="gmodule-no-export-2.0 gobject-2.0 gio-2.0"
 GDK_PIXBUF_EXTRA_LIBS="$STATIC_LIB_DEPS $MATH_LIB $MEDIA_LIB"
@@ -1000,6 +975,39 @@ fi
 
 AM_CONDITIONAL(ENABLE_MAN, test x$enable_man != xno)
 
+###################################################################
+# Check for -fvisibility=hidden to determine if we can do GNU-style
+# visibility attributes for symbol export control
+###################################################################
+GDK_PIXBUF_HIDDEN_VISIBILITY_CFLAGS=""
+case "$host" in
+  *-*-mingw*)
+    dnl on mingw32 we do -fvisibility=hidden and __declspec(dllexport)
+    AC_DEFINE([_GDK_PIXBUF_EXTERN], [__attribute__((visibility("default"))) __declspec(dllexport) extern],
+              [defines how to decorate public symbols while building])
+    CFLAGS="${CFLAGS} -fvisibility=hidden"
+    ;;
+  *)
+    dnl on other compilers, check if we can do -fvisibility=hidden
+    SAVED_CFLAGS="${CFLAGS}"
+    CFLAGS="-fvisibility=hidden"
+    AC_MSG_CHECKING([for -fvisibility=hidden compiler flag])
+    AC_TRY_COMPILE([], [return 0],
+                   AC_MSG_RESULT(yes)
+                   enable_fvisibility_hidden=yes,
+                   AC_MSG_RESULT(no)
+                   enable_fvisibility_hidden=no)
+    CFLAGS="${SAVED_CFLAGS}"
+
+    AS_IF([test "${enable_fvisibility_hidden}" = "yes"], [
+      AC_DEFINE([_GDK_PIXBUF_EXTERN], [__attribute__((visibility("default"))) extern],
+                [defines how to decorate public symbols while building])
+      GDK_PIXBUF_HIDDEN_VISIBILITY_CFLAGS="-fvisibility=hidden"
+    ])
+    ;;
+esac
+AC_SUBST(GDK_PIXBUF_HIDDEN_VISIBILITY_CFLAGS)
+
 
 ##################################################
 # Check for -Bsymbolic-functions linker flag used
@@ -1065,6 +1073,27 @@ AC_SUBST(LCOV)
 AC_SUBST(GCOV)
 AC_SUBST(GENHTML)
 
+#######################################################
+# Enable replacing the build-time prefix in the loaders
+# cache with the installation prefix on this machine
+# for relocatable packages such as Windows and OS X
+# applications and linux bundles
+#######################################################
+
+AC_MSG_CHECKING([whether to build with application bundle relocation support])
+AC_ARG_ENABLE([relocations],
+              AS_HELP_STRING([--enable-relocations],
+                             [Whether to build with application bundle relocation support]),
+              [],
+              [enable_relocations=no])
+
+AC_MSG_RESULT([$enable_relocations])
+
+if test "x$enable_relocations" = "xyes"; then
+  AC_DEFINE(GDK_PIXBUF_RELOCATABLE, 1,
+                  [Define to 1 to replace the build-time prefix in modules])
+fi
+
 ##################################################
 # Output commands
 ##################################################
@@ -1077,18 +1106,21 @@ gdk-pixbuf/Makefile
 gdk-pixbuf/gdk_pixbuf.rc
 gdk-pixbuf/gdk-pixbuf-features.h
 gdk-pixbuf/pixops/Makefile
-build/Makefile
-build/win32/Makefile
-build/win32/vs9/Makefile
-build/win32/vs10/Makefile
-build/win32/vs11/Makefile
-build/win32/vs12/Makefile
+win32/Makefile
+win32/vs9/Makefile
+win32/vs9/gdk-pixbuf-version-paths.vsprops
+win32/vs10/Makefile
+win32/vs10/gdk-pixbuf-version-paths.props
+win32/vs11/Makefile
+win32/vs12/Makefile
+win32/vs14/Makefile
 docs/Makefile
 docs/reference/Makefile
 docs/reference/gdk-pixbuf/Makefile
 docs/reference/gdk-pixbuf/version.xml
 po/Makefile.in
 tests/Makefile
+thumbnailer/Makefile
 contrib/Makefile
 contrib/gdk-pixbuf-xlib/Makefile
 contrib/gdk-pixbuf-xlib/gdk-pixbuf-xlib-2.0.pc
