@@ -190,16 +190,13 @@ convert_cmyk_to_rgb (struct jpeg_decompress_struct *cinfo,
 			m = p[1];
 			y = p[2];
 			k = p[3];
-			if (cinfo->saw_Adobe_marker) {
-				p[0] = k*c / 255;
-				p[1] = k*m / 255;
-				p[2] = k*y / 255;
-			}
-			else {
-				p[0] = (255 - k)*(255 - c) / 255;
-				p[1] = (255 - k)*(255 - m) / 255;
-				p[2] = (255 - k)*(255 - y) / 255;
-			}
+
+			/* We now assume that all CMYK JPEG files
+			 * use inverted CMYK, as Photoshop does
+			 * See https://bugzilla.gnome.org/show_bug.cgi?id=618096 */
+			p[0] = k*c / 255;
+			p[1] = k*m / 255;
+			p[2] = k*y / 255;
 			p[3] = 255;
 			p += 4;
 		}
@@ -447,44 +444,64 @@ jpeg_parse_exif_app1 (JpegExifContext *context, jpeg_saved_marker_ptr marker)
 	i = i + offset;
 
 	/* check that we still are within the buffer and can read the tag count */
-	if ((i + 2) > marker->data_length) {
-		ret = FALSE;
-		goto out;
-	}
+	{
+	    const size_t new_i = i + 2;
+	    if (new_i < i || new_i > marker->data_length) {
+		    ret = FALSE;
+		    goto out;
+	    }
 
-	/* find out how many tags we have in IFD0. As per the TIFF spec, the first
-	   two bytes of the IFD contain a count of the number of tags. */
-	tags = de_get16(&marker->data[i], endian);
-	i = i + 2;
+	    /* find out how many tags we have in IFD0. As per the TIFF spec, the first
+	       two bytes of the IFD contain a count of the number of tags. */
+	    tags = de_get16(&marker->data[i], endian);
+	    i = new_i;
+	}
 
 	/* check that we still have enough data for all tags to check. The tags
 	   are listed in consecutive 12-byte blocks. The tag ID, type, size, and
 	   a pointer to the actual value, are packed into these 12 byte entries. */
-	if ((i + tags * 12) > marker->data_length) {
+	{
+	    const size_t new_i = i + tags * 12;
+	    if (new_i < i || new_i > marker->data_length) {
 		ret = FALSE;
 		goto out;
+	    }
 	}
 
 	/* check through IFD0 for tags */
-	while (tags--){
+	while (tags--) {
+		size_t new_i;
+
+		/* We check for integer overflow before the loop and
+		 * at the end of each iteration */
 		guint tag   = de_get16(&marker->data[i + 0], endian);
 		guint type  = de_get16(&marker->data[i + 2], endian);
 		guint count = de_get32(&marker->data[i + 4], endian);
-		/* values of types small enough to fit are stored directly in the (first) bytes of the Value Offset field */
-		guint short_value = de_get16(&marker->data[i + 8], endian);
 
 		/* orientation tag? */
 		if (tag == 0x112){
 
-			/* The orientation field should consist of a single 2-byte integer */
-			if (type != 0x3 || count != 1)
-				continue;
+			/* The orientation field should consist of a single 2-byte integer,
+			 * but might be a signed long.
+			 * Values of types smaller than 4 bytes are stored directly in the
+			 * Value Offset field */
+			if (type == 0x3 && count == 1) {
+				guint short_value = de_get16(&marker->data[i + 8], endian);
 
-			/* get the orientation value */
-			context->orientation = short_value <= 8 ? short_value : 0;
+				context->orientation = short_value <= 8 ? short_value : 0;
+			} else if (type == 0x9 && count == 1) {
+				guint long_value = de_get32(&marker->data[i + 8], endian);
+
+				context->orientation = long_value <= 8 ? long_value : 0;
+			}
 		}
 		/* move the pointer to the next 12-byte tag field. */
-		i = i + 12;
+		new_i = i + 12;
+		if (new_i < i || new_i > marker->data_length) {
+			ret = FALSE;
+			goto out;
+		}
+		i = new_i;
 	}
 
 out:
@@ -519,6 +536,7 @@ gdk_pixbuf__jpeg_image_load (FILE *f, GError **error)
 {
 	gint   i;
 	char   otag_str[5];
+	char  *density_str;
 	GdkPixbuf * volatile pixbuf = NULL;
 	guchar *dptr;
 	guchar *lines[4]; /* Used to expand rows, via rec_outbuf_height, 
@@ -598,6 +616,27 @@ gdk_pixbuf__jpeg_image_load (FILE *f, GError **error)
                 }
                
 		goto out; 
+	}
+
+	switch (cinfo.density_unit) {
+	case 1:
+		/* Dots per inch (no conversion required) */
+		density_str = g_strdup_printf ("%d", cinfo.X_density);
+		gdk_pixbuf_set_option (pixbuf, "x-dpi", density_str);
+		g_free (density_str);
+		density_str = g_strdup_printf ("%d", cinfo.Y_density);
+		gdk_pixbuf_set_option (pixbuf, "y-dpi", density_str);
+		g_free (density_str);
+		break;
+	case 2:
+		/* Dots per cm - convert into dpi */
+		density_str = g_strdup_printf ("%d", DPCM_TO_DPI (cinfo.X_density));
+		gdk_pixbuf_set_option (pixbuf, "x-dpi", density_str);
+		g_free (density_str);
+		density_str = g_strdup_printf ("%d", DPCM_TO_DPI (cinfo.Y_density));
+		gdk_pixbuf_set_option (pixbuf, "y-dpi", density_str);
+		g_free (density_str);
+		break;
 	}
 
 	/* if orientation tag was found */
@@ -862,7 +901,7 @@ gdk_pixbuf__jpeg_image_load_lines (JpegProgContext  *context,
                         return FALSE;
                 }
 
-                context->dptr += nlines * context->pixbuf->rowstride;
+                context->dptr += (gsize)nlines * context->pixbuf->rowstride;
 
                 /* send updated signal */
 		if (context->updated_func)
@@ -901,6 +940,7 @@ gdk_pixbuf__jpeg_image_load_increment (gpointer data,
 	gint             width, height;
 	char             otag_str[5];
 	gchar 		*icc_profile_base64;
+	char            *density_str;
 	JpegExifContext  exif_context = { 0, };
 	gboolean	 retval;
 
@@ -1037,6 +1077,27 @@ gdk_pixbuf__jpeg_image_load_increment (gpointer data,
                                                      _("Couldn't allocate memory for loading JPEG file"));
                                 retval = FALSE;
 				goto out;
+			}
+
+			switch (cinfo->density_unit) {
+			case 1:
+				/* Dots per inch (no conversion required) */
+				density_str = g_strdup_printf ("%d", cinfo->X_density);
+				gdk_pixbuf_set_option (context->pixbuf, "x-dpi", density_str);
+				g_free (density_str);
+				density_str = g_strdup_printf ("%d", cinfo->Y_density);
+				gdk_pixbuf_set_option (context->pixbuf, "y-dpi", density_str);
+				g_free (density_str);
+				break;
+			case 2:
+				/* Dots per cm - convert into dpi */
+				density_str = g_strdup_printf ("%d", DPCM_TO_DPI (cinfo->X_density));
+				gdk_pixbuf_set_option (context->pixbuf, "x-dpi", density_str);
+				g_free (density_str);
+				density_str = g_strdup_printf ("%d", DPCM_TO_DPI (cinfo->Y_density));
+				gdk_pixbuf_set_option (context->pixbuf, "y-dpi", density_str);
+				g_free (density_str);
+				break;
 			}
 		
 		        /* if orientation tag was found set an option to remember its value */
@@ -1226,6 +1287,8 @@ real_save_jpeg (GdkPixbuf          *pixbuf,
        int n_channels;
        struct error_handler_data jerr;
        ToFunctionDestinationManager to_callback_destmgr;
+       int x_density = 0;
+       int y_density = 0;
        gchar *icc_profile = NULL;
        gchar *data;
        gint retval = TRUE;
@@ -1268,6 +1331,48 @@ real_save_jpeg (GdkPixbuf          *pixbuf,
                                        retval = FALSE;
                                        goto cleanup;
                                }
+                       } else if (strcmp (*kiter, "x-dpi") == 0) {
+                               char *endptr = NULL;
+                               x_density = strtol (*viter, &endptr, 10);
+                               if (endptr == *viter)
+                                       x_density = -1;
+
+                               if (x_density <= 0 ||
+                                   x_density > 65535) {
+                                       /* This is a user-visible error;
+                                        * lets people skip the range-checking
+                                        * in their app.
+                                        */
+                                       g_set_error (error,
+                                                    GDK_PIXBUF_ERROR,
+                                                    GDK_PIXBUF_ERROR_BAD_OPTION,
+                                                    _("JPEG x-dpi must be a value between 1 and 65535; value '%s' is not allowed."),
+                                                    *viter);
+
+                                       retval = FALSE;
+                                       goto cleanup;
+                               }
+                       } else if (strcmp (*kiter, "y-dpi") == 0) {
+                               char *endptr = NULL;
+                               y_density = strtol (*viter, &endptr, 10);
+                               if (endptr == *viter)
+                                       y_density = -1;
+
+                               if (y_density <= 0 ||
+                                   y_density > 65535) {
+                                       /* This is a user-visible error;
+                                        * lets people skip the range-checking
+                                        * in their app.
+                                        */
+                                       g_set_error (error,
+                                                    GDK_PIXBUF_ERROR,
+                                                    GDK_PIXBUF_ERROR_BAD_OPTION,
+                                                    _("JPEG y-dpi must be a value between 1 and 65535; value '%s' is not allowed."),
+                                                    *viter);
+
+                                       retval = FALSE;
+                                       goto cleanup;
+                               }
                        } else if (strcmp (*kiter, "icc-profile") == 0) {
                                /* decode from base64 */
                                icc_profile = (gchar*) g_base64_decode (*viter, &icc_profile_size);
@@ -1296,6 +1401,12 @@ real_save_jpeg (GdkPixbuf          *pixbuf,
        w = gdk_pixbuf_get_width (pixbuf);
        h = gdk_pixbuf_get_height (pixbuf);
        pixels = gdk_pixbuf_get_pixels (pixbuf);
+
+       /* Guaranteed by the caller. */
+       g_assert (w >= 0);
+       g_assert (h >= 0);
+       g_assert (rowstride >= 0);
+       g_assert (n_channels >= 0);
 
        /* Allocate a small buffer to convert image data,
 	* and a larger buffer if doing to_callback save.
@@ -1355,6 +1466,13 @@ real_save_jpeg (GdkPixbuf          *pixbuf,
        jpeg_set_defaults (&cinfo);
        jpeg_set_quality (&cinfo, quality, TRUE);
 
+       /* set density information */
+       if (x_density > 0 && y_density > 0) {
+           cinfo.density_unit = 1; /* Dots per inch */
+           cinfo.X_density = x_density;
+           cinfo.Y_density = y_density;
+       }
+
        jpeg_start_compress (&cinfo, TRUE);
 
 	/* write ICC profile data */
@@ -1397,11 +1515,16 @@ real_save_jpeg (GdkPixbuf          *pixbuf,
        while (cinfo.next_scanline < cinfo.image_height) {
                /* convert scanline from ARGB to RGB packed */
                for (j = 0; j < w; j++)
-                       memcpy (&(buf[j*3]), &(ptr[i*rowstride + j*n_channels]), 3);
+                       memcpy (&(buf[j*3]), &(ptr[(gsize)i*rowstride + j*n_channels]), 3);
 
                /* write scanline */
                jbuf = (JSAMPROW *)(&buf);
-               jpeg_write_scanlines (&cinfo, jbuf, 1);
+               if (jpeg_write_scanlines (&cinfo, jbuf, 1) == 0) {
+                      jpeg_destroy_compress (&cinfo);
+                      retval = FALSE;
+                      goto cleanup;
+               }
+
                i++;
                y++;
 
@@ -1440,6 +1563,16 @@ gdk_pixbuf__jpeg_image_save_to_callback (GdkPixbufSaveFunc   save_func,
 			       TRUE, NULL, save_func, user_data);
 }
 
+static gboolean
+gdk_pixbuf__jpeg_is_save_option_supported (const gchar *option_key)
+{
+        if (g_strcmp0 (option_key, "quality") == 0 ||
+            g_strcmp0 (option_key, "icc-profile") == 0)
+                return TRUE;
+
+        return FALSE;
+}
+
 #ifndef INCLUDE_jpeg
 #define MODULE_ENTRY(function) G_MODULE_EXPORT void function
 #else
@@ -1454,6 +1587,7 @@ MODULE_ENTRY (fill_vtable) (GdkPixbufModule *module)
 	module->load_increment = gdk_pixbuf__jpeg_image_load_increment;
 	module->save = gdk_pixbuf__jpeg_image_save;
 	module->save_to_callback = gdk_pixbuf__jpeg_image_save_to_callback;
+        module->is_save_option_supported = gdk_pixbuf__jpeg_is_save_option_supported;
 }
 
 MODULE_ENTRY (fill_info) (GdkPixbufFormat *info)
@@ -1475,7 +1609,7 @@ MODULE_ENTRY (fill_info) (GdkPixbufFormat *info)
 
 	info->name = "jpeg";
 	info->signature = (GdkPixbufModulePattern *) signature;
-	info->description = N_("The JPEG image format");
+	info->description = NC_("image format", "JPEG");
 	info->mime_types = (gchar **) mime_types;
 	info->extensions = (gchar **) extensions;
 	info->flags = GDK_PIXBUF_FORMAT_WRITABLE | GDK_PIXBUF_FORMAT_THREADSAFE;

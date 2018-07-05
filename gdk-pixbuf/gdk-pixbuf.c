@@ -134,18 +134,25 @@ G_DEFINE_TYPE_WITH_CODE (GdkPixbuf, gdk_pixbuf, G_TYPE_OBJECT,
 static void 
 gdk_pixbuf_init (GdkPixbuf *pixbuf)
 {
+  pixbuf->colorspace = GDK_COLORSPACE_RGB;
+  pixbuf->n_channels = 3;
+  pixbuf->bits_per_sample = 8;
+  pixbuf->has_alpha = FALSE;
 }
 
 static void
 gdk_pixbuf_class_init (GdkPixbufClass *klass)
 {
         GObjectClass *object_class = G_OBJECT_CLASS (klass);
-        
+
+        _gdk_pixbuf_init_gettext ();
+
         object_class->finalize = gdk_pixbuf_finalize;
         object_class->set_property = gdk_pixbuf_set_property;
         object_class->get_property = gdk_pixbuf_get_property;
 
 #define PIXBUF_PARAM_FLAGS G_PARAM_READWRITE|G_PARAM_CONSTRUCT_ONLY|\
+                           G_PARAM_EXPLICIT_NOTIFY|\
                            G_PARAM_STATIC_NAME|G_PARAM_STATIC_NICK|G_PARAM_STATIC_BLURB
         /**
          * GdkPixbuf:n-channels:
@@ -156,8 +163,8 @@ gdk_pixbuf_class_init (GdkPixbufClass *klass)
         g_object_class_install_property (object_class,
                                          PROP_N_CHANNELS,
                                          g_param_spec_int ("n-channels",
-                                                           P_("Number of Channels"),
-                                                           P_("The number of samples per pixel"),
+                                                           _("Number of Channels"),
+                                                           _("The number of samples per pixel"),
                                                            0,
                                                            G_MAXINT,
                                                            3,
@@ -166,8 +173,8 @@ gdk_pixbuf_class_init (GdkPixbufClass *klass)
         g_object_class_install_property (object_class,
                                          PROP_COLORSPACE,
                                          g_param_spec_enum ("colorspace",
-                                                            P_("Colorspace"),
-                                                            P_("The colorspace in which the samples are interpreted"),
+                                                            _("Colorspace"),
+                                                            _("The colorspace in which the samples are interpreted"),
                                                             GDK_TYPE_COLORSPACE,
                                                             GDK_COLORSPACE_RGB,
                                                             PIXBUF_PARAM_FLAGS));
@@ -175,8 +182,8 @@ gdk_pixbuf_class_init (GdkPixbufClass *klass)
         g_object_class_install_property (object_class,
                                          PROP_HAS_ALPHA,
                                          g_param_spec_boolean ("has-alpha",
-                                                               P_("Has Alpha"),
-                                                               P_("Whether the pixbuf has an alpha channel"),
+                                                               _("Has Alpha"),
+                                                               _("Whether the pixbuf has an alpha channel"),
                                                                FALSE,
                                                                PIXBUF_PARAM_FLAGS));
 
@@ -189,8 +196,8 @@ gdk_pixbuf_class_init (GdkPixbufClass *klass)
         g_object_class_install_property (object_class,
                                          PROP_BITS_PER_SAMPLE,
                                          g_param_spec_int ("bits-per-sample",
-                                                           P_("Bits per Sample"),
-                                                           P_("The number of bits per sample"),
+                                                           _("Bits per Sample"),
+                                                           _("The number of bits per sample"),
                                                            1,
                                                            16,
                                                            8,
@@ -199,8 +206,8 @@ gdk_pixbuf_class_init (GdkPixbufClass *klass)
         g_object_class_install_property (object_class,
                                          PROP_WIDTH,
                                          g_param_spec_int ("width",
-                                                           P_("Width"),
-                                                           P_("The number of columns of the pixbuf"),
+                                                           _("Width"),
+                                                           _("The number of columns of the pixbuf"),
                                                            1,
                                                            G_MAXINT,
                                                            1,
@@ -209,8 +216,8 @@ gdk_pixbuf_class_init (GdkPixbufClass *klass)
         g_object_class_install_property (object_class,
                                          PROP_HEIGHT,
                                          g_param_spec_int ("height",
-                                                           P_("Height"),
-                                                           P_("The number of rows of the pixbuf"),
+                                                           _("Height"),
+                                                           _("The number of rows of the pixbuf"),
                                                            1,
                                                            G_MAXINT,
                                                            1,
@@ -226,8 +233,8 @@ gdk_pixbuf_class_init (GdkPixbufClass *klass)
         g_object_class_install_property (object_class,
                                          PROP_ROWSTRIDE,
                                          g_param_spec_int ("rowstride",
-                                                           P_("Rowstride"),
-                                                           P_("The number of bytes between the start of a row and the start of the next row"),
+                                                           _("Rowstride"),
+                                                           _("The number of bytes between the start of a row and the start of the next row"),
                                                            1,
                                                            G_MAXINT,
                                                            1,
@@ -236,8 +243,8 @@ gdk_pixbuf_class_init (GdkPixbufClass *klass)
         g_object_class_install_property (object_class,
                                          PROP_PIXELS,
                                          g_param_spec_pointer ("pixels",
-                                                               P_("Pixels"),
-                                                               P_("A pointer to the pixel data of the pixbuf"),
+                                                               _("Pixels"),
+                                                               _("A pointer to the pixel data of the pixbuf"),
                                                                PIXBUF_PARAM_FLAGS));
 
         /**
@@ -251,8 +258,8 @@ gdk_pixbuf_class_init (GdkPixbufClass *klass)
         g_object_class_install_property (object_class,
                                          PROP_PIXEL_BYTES,
                                          g_param_spec_boxed ("pixel-bytes",
-                                                             P_("Pixel Bytes"),
-                                                             P_("Readonly pixel data"),
+                                                             _("Pixel Bytes"),
+                                                             _("Readonly pixel data"),
                                                              G_TYPE_BYTES,
                                                              PIXBUF_PARAM_FLAGS));
 }
@@ -437,8 +444,8 @@ gdk_pixbuf_new (GdkColorspace colorspace,
                 int           height)
 {
 	guchar *buf;
-	int channels;
-	int rowstride;
+	unsigned int channels;
+	unsigned int rowstride;
 
 	g_return_val_if_fail (colorspace == GDK_COLORSPACE_RGB, NULL);
 	g_return_val_if_fail (bits_per_sample == 8, NULL);
@@ -446,12 +453,13 @@ gdk_pixbuf_new (GdkColorspace colorspace,
 	g_return_val_if_fail (height > 0, NULL);
 
 	channels = has_alpha ? 4 : 3;
-        rowstride = width * channels;
-        if (rowstride / channels != width || rowstride + 3 < 0) /* overflow */
-                return NULL;
-        
+
+	/* Overflow? */
+	if (width > (G_MAXUINT - 3) / channels)
+		return NULL;
+
 	/* Always align rows to 32-bit boundaries */
-	rowstride = (rowstride + 3) & ~3;
+	rowstride = (width * channels + 3) & ~3;
 
 	buf = g_try_malloc_n (height, rowstride);
 	if (!buf)
@@ -467,7 +475,8 @@ gdk_pixbuf_new (GdkColorspace colorspace,
  * @pixbuf: A pixbuf.
  * 
  * Creates a new #GdkPixbuf with a copy of the information in the specified
- * @pixbuf.
+ * @pixbuf. Note that this does not copy the options set on the original #GdkPixbuf,
+ * use gdk_pixbuf_copy_options() for this.
  * 
  * Return value: (transfer full): A newly-created pixbuf with a reference count of 1, or %NULL if
  * not enough memory could be allocated.
@@ -647,7 +656,7 @@ gdk_pixbuf_get_pixels (const GdkPixbuf *pixbuf)
 }
 
 /**
- * gdk_pixbuf_get_pixels_with_length:
+ * gdk_pixbuf_get_pixels_with_length: (rename-to gdk_pixbuf_get_pixels)
  * @pixbuf: A pixbuf.
  * @length: (out): The length of the binary data.
  *
@@ -659,8 +668,6 @@ gdk_pixbuf_get_pixels (const GdkPixbuf *pixbuf)
  *
  * This function will cause an implicit copy of the pixbuf data if the
  * pixbuf was created from read-only data.
- *
- * Rename to: gdk_pixbuf_get_pixels
  *
  * Since: 2.26
  */
@@ -837,6 +844,7 @@ gdk_pixbuf_fill (GdkPixbuf *pixbuf,
         guint w, h;
 
         g_return_if_fail (GDK_IS_PIXBUF (pixbuf));
+        g_return_if_fail (pixbuf->pixels || pixbuf->bytes);
 
         if (pixbuf->width == 0 || pixbuf->height == 0)
                 return;
@@ -897,7 +905,10 @@ gdk_pixbuf_fill (GdkPixbuf *pixbuf,
  * options for cursor definitions. The PNG loader provides the tEXt ancillary
  * chunk key/value pairs as options. Since 2.12, the TIFF and JPEG loaders
  * return an "orientation" option string that corresponds to the embedded 
- * TIFF/Exif orientation tag (if present).
+ * TIFF/Exif orientation tag (if present). Since 2.32, the TIFF loader sets
+ * the "multipage" option string to "yes" when a multi-page TIFF is loaded.
+ * Since 2.32 the JPEG and PNG loaders set "x-dpi" and "y-dpi" if the file
+ * contains image density information in dots per inch.
  * 
  * Return value: the value associated with @key. This is a nul-terminated 
  * string that should not be freed or %NULL if @key was not found.
@@ -922,6 +933,108 @@ gdk_pixbuf_get_option (GdkPixbuf   *pixbuf,
         }
         
         return NULL;
+}
+
+/**
+ * gdk_pixbuf_get_options:
+ * @pixbuf: a #GdkPixbuf
+ *
+ * Returns a #GHashTable with a list of all the options that may have been
+ * attached to the @pixbuf when it was loaded, or that may have been
+ * attached by another function using gdk_pixbuf_set_option().
+ *
+ * See gdk_pixbuf_get_option() for more details.
+ *
+ * Return value: (transfer container) (element-type utf8 utf8): a #GHashTable of key/values
+ *
+ * Since: 2.32
+ **/
+GHashTable *
+gdk_pixbuf_get_options (GdkPixbuf *pixbuf)
+{
+        GHashTable *ht;
+        gchar **options;
+
+        g_return_val_if_fail (GDK_IS_PIXBUF (pixbuf), NULL);
+
+        ht = g_hash_table_new (g_str_hash, g_str_equal);
+
+        options = g_object_get_qdata (G_OBJECT (pixbuf),
+                                      g_quark_from_static_string ("gdk_pixbuf_options"));
+        if (options) {
+                gint i;
+
+                for (i = 0; options[2*i]; i++)
+                        g_hash_table_insert (ht, options[2*i], options[2*i+1]);
+        }
+
+        return ht;
+}
+
+/**
+ * gdk_pixbuf_remove_option:
+ * @pixbuf: a #GdkPixbuf
+ * @key: a nul-terminated string representing the key to remove.
+ *
+ * Remove the key/value pair option attached to a #GdkPixbuf.
+ *
+ * Return value: %TRUE if an option was removed, %FALSE if not.
+ *
+ * Since: 2.36
+ **/
+gboolean
+gdk_pixbuf_remove_option (GdkPixbuf   *pixbuf,
+                          const gchar *key)
+{
+        GQuark  quark;
+        gchar **options;
+        guint n;
+        GPtrArray *array;
+        gboolean found;
+
+        g_return_val_if_fail (GDK_IS_PIXBUF (pixbuf), FALSE);
+        g_return_val_if_fail (key != NULL, FALSE);
+
+        quark = g_quark_from_static_string ("gdk_pixbuf_options");
+
+        options = g_object_get_qdata (G_OBJECT (pixbuf), quark);
+        if (!options)
+                return FALSE;
+
+        g_object_steal_qdata (G_OBJECT (pixbuf), quark);
+
+        /* There's at least a nul-terminator */
+        array = g_ptr_array_new_full (1, g_free);
+
+        found = FALSE;
+        for (n = 0; options[2*n]; n++) {
+                if (strcmp (options[2*n], key) != 0) {
+                        g_ptr_array_add (array, g_strdup (options[2*n]));   /* key */
+                        g_ptr_array_add (array, g_strdup (options[2*n+1])); /* value */
+                } else {
+                        found = TRUE;
+                }
+        }
+
+        if (array->len == 0) {
+                g_ptr_array_unref (array);
+                g_strfreev (options);
+                return found;
+        }
+
+        if (!found) {
+                g_ptr_array_free (array, TRUE);
+                g_object_set_qdata_full (G_OBJECT (pixbuf), quark,
+                                         options, (GDestroyNotify) g_strfreev);
+                return FALSE;
+        }
+
+        g_ptr_array_add (array, NULL);
+        g_object_set_qdata_full (G_OBJECT (pixbuf), quark,
+                                 g_ptr_array_free (array, FALSE), (GDestroyNotify) g_strfreev);
+        g_strfreev (options);
+
+        return TRUE;
 }
 
 /**
@@ -977,6 +1090,46 @@ gdk_pixbuf_set_option (GdkPixbuf   *pixbuf,
         return TRUE;
 }
 
+/**
+ * gdk_pixbuf_copy_options:
+ * @src_pixbuf: a #GdkPixbuf to copy options from
+ * @dest_pixbuf: the #GdkPixbuf to copy options to
+ *
+ * Copy the key/value pair options attached to a #GdkPixbuf to another.
+ * This is useful to keep original metadata after having manipulated
+ * a file. However be careful to remove metadata which you've already
+ * applied, such as the "orientation" option after rotating the image.
+ *
+ * Return value: %TRUE on success.
+ *
+ * Since: 2.36
+ **/
+gboolean
+gdk_pixbuf_copy_options (GdkPixbuf *src_pixbuf,
+                         GdkPixbuf *dest_pixbuf)
+{
+        GQuark  quark;
+        gchar **options;
+
+        g_return_val_if_fail (GDK_IS_PIXBUF (src_pixbuf), FALSE);
+        g_return_val_if_fail (GDK_IS_PIXBUF (dest_pixbuf), FALSE);
+
+        quark = g_quark_from_static_string ("gdk_pixbuf_options");
+
+        options = g_object_dup_qdata (G_OBJECT (src_pixbuf),
+                                      quark,
+                                      (GDuplicateFunc) g_strdupv,
+                                      NULL);
+
+        if (options == NULL)
+                return TRUE;
+
+        g_object_set_qdata_full (G_OBJECT (dest_pixbuf), quark,
+                                 options, (GDestroyNotify) g_strfreev);
+
+        return TRUE;
+}
+
 static void
 gdk_pixbuf_set_property (GObject         *object,
 			 guint            prop_id,
@@ -984,40 +1137,53 @@ gdk_pixbuf_set_property (GObject         *object,
 			 GParamSpec      *pspec)
 {
   GdkPixbuf *pixbuf = GDK_PIXBUF (object);
+  gboolean notify = TRUE;
 
   switch (prop_id)
           {
           case PROP_COLORSPACE:
+                  notify = pixbuf->colorspace != g_value_get_enum (value);
                   pixbuf->colorspace = g_value_get_enum (value);
                   break;
           case PROP_N_CHANNELS:
+                  notify = pixbuf->n_channels != g_value_get_int (value);
                   pixbuf->n_channels = g_value_get_int (value);
                   break;
           case PROP_HAS_ALPHA:
+                  notify = pixbuf->has_alpha != g_value_get_boolean (value);
                   pixbuf->has_alpha = g_value_get_boolean (value);
                   break;
           case PROP_BITS_PER_SAMPLE:
+                  notify = pixbuf->bits_per_sample != g_value_get_int (value);
                   pixbuf->bits_per_sample = g_value_get_int (value);
                   break;
           case PROP_WIDTH:
+                  notify = pixbuf->width != g_value_get_int (value);
                   pixbuf->width = g_value_get_int (value);
                   break;
           case PROP_HEIGHT:
+                  notify = pixbuf->height != g_value_get_int (value);
                   pixbuf->height = g_value_get_int (value);
                   break;
           case PROP_ROWSTRIDE:
+                  notify = pixbuf->rowstride != g_value_get_int (value);
                   pixbuf->rowstride = g_value_get_int (value);
                   break;
           case PROP_PIXELS:
+                  notify = pixbuf->pixels != (guchar *) g_value_get_pointer (value);
                   pixbuf->pixels = (guchar *) g_value_get_pointer (value);
                   break;
           case PROP_PIXEL_BYTES:
+                  notify = pixbuf->bytes != g_value_get_boxed (value);
                   pixbuf->bytes = g_value_dup_boxed (value);
                   break;
           default:
                   G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
                   break;
           }
+
+        if (notify)
+                g_object_notify_by_pspec (G_OBJECT (object), pspec);
 }
 
 static void

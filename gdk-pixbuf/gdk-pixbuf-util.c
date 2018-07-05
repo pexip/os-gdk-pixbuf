@@ -67,6 +67,8 @@ gdk_pixbuf_add_alpha (const GdkPixbuf *pixbuf,
 	int x, y;
 	const guint8 *src_pixels;
 	guint8 *ret_pixels;
+	const guchar *src;
+	guchar *dest;
 
 	g_return_val_if_fail (GDK_IS_PIXBUF (pixbuf), NULL);
 	g_return_val_if_fail (pixbuf->colorspace == GDK_COLORSPACE_RGB, NULL);
@@ -85,20 +87,18 @@ gdk_pixbuf_add_alpha (const GdkPixbuf *pixbuf,
 	} else {
                 new_pixbuf = gdk_pixbuf_new (GDK_COLORSPACE_RGB, TRUE, 8, pixbuf->width, pixbuf->height);
         }
-        
+
 	if (!new_pixbuf)
 		return NULL;
 
 	ret_pixels = gdk_pixbuf_get_pixels (new_pixbuf);
 
-	for (y = 0; y < pixbuf->height; y++) {
-		const guchar *src;
-		guchar *dest;
+	for (y = 0; y < pixbuf->height; y++, src_pixels += pixbuf->rowstride, ret_pixels += new_pixbuf->rowstride) {
 		guchar tr, tg, tb;
 
-		src = src_pixels + y * pixbuf->rowstride;
-		dest = ret_pixels + y * new_pixbuf->rowstride;
-                
+                src = src_pixels;
+                dest = ret_pixels;
+
                 if (pixbuf->has_alpha) {
                         /* Just subst color, we already copied everything else */
                         for (x = 0; x < pixbuf->width; x++) {
@@ -107,12 +107,12 @@ gdk_pixbuf_add_alpha (const GdkPixbuf *pixbuf,
                                 src += 4;
                                 dest += 4;
                         }
-                } else {                        
+                } else {
                         for (x = 0; x < pixbuf->width; x++) {
                                 tr = *dest++ = *src++;
                                 tg = *dest++ = *src++;
                                 tb = *dest++ = *src++;
-                                
+
                                 if (substitute_color && tr == r && tg == g && tb == b)
                                         *dest++ = 0;
                                 else
@@ -282,7 +282,8 @@ gdk_pixbuf_saturate_and_pixelate(const GdkPixbuf *src,
  * appropriate transform will be performed so that the pixbuf
  * is oriented correctly.
  *
- * Return value: (transfer full): A newly-created pixbuf, or a reference to the
+ * Return value: (transfer full): A newly-created pixbuf, %NULL if
+ * not enough memory could be allocated for it, or a reference to the
  * input pixbuf (with an increased reference count).
  *
  * Since: 2.12
@@ -349,25 +350,28 @@ gdk_pixbuf_apply_embedded_orientation (GdkPixbuf *src)
         return dest;
 }
 
-#ifdef G_OS_WIN32
+#ifdef GDK_PIXBUF_RELOCATABLE
 
 static const gchar *
 get_localedir (void)
 {
     gchar *temp;
-    gchar *retval;
     
-    /* In gdk-pixbuf-io.c */
-    extern char *_gdk_pixbuf_win32_get_toplevel (void);
+    temp = g_build_filename (gdk_pixbuf_get_toplevel (), "share/locale", NULL);
 
-    temp = g_build_filename (_gdk_pixbuf_win32_get_toplevel (), "share/locale", NULL);
-
-    /* The localedir is passed to bindtextdomain() which isn't
-     * UTF-8-aware.
-     */
-    retval = g_win32_locale_filename_from_utf8 (temp);
-    g_free (temp);
-    return retval;
+#ifdef G_OS_WIN32
+    {
+      gchar *retval;
+      /* The localedir is passed to bindtextdomain() which isn't
+      * UTF-8-aware.
+      */
+      retval = g_win32_locale_filename_from_utf8 (temp);
+      g_free (temp);
+      return retval;
+    }
+#else
+    return temp;
+#endif
 }
 
 #undef GDK_PIXBUF_LOCALEDIR
@@ -375,8 +379,8 @@ get_localedir (void)
 
 #endif
 
-const gchar *
-gdk_pixbuf_gettext (const gchar *msgid)
+void
+_gdk_pixbuf_init_gettext (void)
 {
         static gsize gettext_initialized = FALSE;
 
@@ -387,6 +391,10 @@ gdk_pixbuf_gettext (const gchar *msgid)
 #endif
                 g_once_init_leave (&gettext_initialized, TRUE);
         }
+}
 
+const gchar *
+gdk_pixbuf_gettext (const gchar *msgid)
+{
         return g_dgettext (GETTEXT_PACKAGE, msgid);
 }
