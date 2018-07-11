@@ -20,6 +20,8 @@
 #include "gdk-pixdata.h"
 #include <string.h>
 
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+
 /**
  * SECTION:inline
  * @Short_description: Functions for inlined pixbuf handling.
@@ -30,7 +32,10 @@
  * GdkPixBuf includes a utility named gdk-pixbuf-csource, which
  * can be used to convert image files into #GdkPixdata structures suitable
  * for inclusion in C sources. To convert the #GdkPixdata structures back 
- * into #GdkPixbuf<!-- -->s, use gdk_pixbuf_from_pixdata.
+ * into #GdkPixbufs, use gdk_pixbuf_from_pixdata.
+ *
+ * #GdkPixdata should not be used any more. #GResource should be used to save
+ * the original compressed images inside the program's binary.
  */
 
 #define APPEND g_string_append_printf
@@ -102,6 +107,8 @@ pixdata_get_length (const GdkPixdata *pixdata)
  * Return value: (array length=stream_length_p) (transfer full): A
  * newly-allocated string containing the serialized #GdkPixdata
  * structure.
+ *
+ * Deprecated: 2.32: Use #GResource instead.
  **/
 guint8* /* free result */
 gdk_pixdata_serialize (const GdkPixdata *pixdata,
@@ -194,6 +201,8 @@ get_uint32 (const guint8 *stream, guint *result)
  *
  * Return value: Upon successful deserialization %TRUE is returned,
  * %FALSE otherwise.
+ *
+ * Deprecated: 2.32: Use #GResource instead.
  **/
 gboolean
 gdk_pixdata_deserialize (GdkPixdata   *pixdata,
@@ -322,6 +331,8 @@ free_buffer (guchar *pixels, gpointer data)
  * Returns: (nullable): If @use_rle is %TRUE, a pointer to the
  *   newly-allocated memory for the run-length encoded pixel data,
  *   otherwise %NULL.
+ *
+ * Deprecated: 2.32: Use #GResource instead.
  **/
 gpointer
 gdk_pixdata_from_pixbuf (GdkPixdata      *pixdata,
@@ -398,6 +409,11 @@ gdk_pixdata_from_pixbuf (GdkPixdata      *pixdata,
   return free_me;
 }
 
+/* From glib's gmem.c */
+#define SIZE_OVERFLOWS(a,b) (G_UNLIKELY ((b) > 0 && (a) > G_MAXSIZE / (b)))
+
+#define RLE_OVERRUN(offset) (rle_buffer_limit == NULL ? FALSE : rle_buffer + (offset) > rle_buffer_limit)
+
 /**
  * gdk_pixbuf_from_pixdata:
  * @pixdata: a #GdkPixdata to convert into a #GdkPixbuf.
@@ -410,6 +426,7 @@ gdk_pixdata_from_pixbuf (GdkPixdata      *pixdata,
  * newly-allocated memory; otherwise it is reused.
  *
  * Returns: (transfer full): a new #GdkPixbuf.
+ * Deprecated: 2.32: Use #GResource instead.
  **/
 GdkPixbuf*
 gdk_pixbuf_from_pixdata (const GdkPixdata *pixdata,
@@ -432,8 +449,35 @@ gdk_pixbuf_from_pixdata (const GdkPixdata *pixdata,
 
   bpp = (pixdata->pixdata_type & GDK_PIXDATA_COLOR_TYPE_MASK) == GDK_PIXDATA_COLOR_TYPE_RGB ? 3 : 4;
   encoding = pixdata->pixdata_type & GDK_PIXDATA_ENCODING_MASK;
+
+  g_debug ("gdk_pixbuf_from_pixdata() called on:");
+  g_debug ("\tEncoding %s", encoding == GDK_PIXDATA_ENCODING_RAW ? "raw" : "rle");
+  g_debug ("\tDimensions: %d x %d", pixdata->width, pixdata->height);
+  g_debug ("\tRowstride: %d, Length: %d", pixdata->rowstride, pixdata->length);
+  g_debug ("\tCopy pixels == %s", copy_pixels ? "true" : "false");
+
   if (encoding == GDK_PIXDATA_ENCODING_RLE)
     copy_pixels = TRUE;
+
+  /* Sanity check the length and dimensions */
+  if (SIZE_OVERFLOWS (pixdata->height, pixdata->rowstride))
+    {
+      g_set_error_literal (error, GDK_PIXBUF_ERROR,
+                           GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
+                           _("Image pixel data corrupt"));
+      return NULL;
+    }
+
+  if (encoding == GDK_PIXDATA_ENCODING_RAW &&
+      pixdata->length >= 1 &&
+      pixdata->length < pixdata->height * pixdata->rowstride - GDK_PIXDATA_HEADER_LENGTH)
+    {
+      g_set_error_literal (error, GDK_PIXBUF_ERROR,
+                           GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
+                           _("Image pixel data corrupt"));
+      return NULL;
+    }
+
   if (copy_pixels)
     {
       data = g_try_malloc_n (pixdata->height, pixdata->rowstride);
@@ -452,13 +496,26 @@ gdk_pixbuf_from_pixdata (const GdkPixdata *pixdata,
   if (encoding == GDK_PIXDATA_ENCODING_RLE)
     {
       const guint8 *rle_buffer = pixdata->pixel_data;
+      guint8 *rle_buffer_limit = NULL;
       guint8 *image_buffer = data;
       guint8 *image_limit = data + pixdata->rowstride * pixdata->height;
       gboolean check_overrun = FALSE;
 
-      while (image_buffer < image_limit)
+      if (pixdata->length >= 1)
+        rle_buffer_limit = pixdata->pixel_data + pixdata->length - GDK_PIXDATA_HEADER_LENGTH;
+
+      while (image_buffer < image_limit &&
+             (rle_buffer_limit != NULL || rle_buffer > rle_buffer_limit))
 	{
-	  guint length = *(rle_buffer++);
+	  guint length;
+
+	  if (RLE_OVERRUN(1))
+	    {
+	      check_overrun = TRUE;
+	      break;
+	    }
+
+	  length = *(rle_buffer++);
 
 	  if (length & 128)
 	    {
@@ -466,6 +523,11 @@ gdk_pixbuf_from_pixdata (const GdkPixdata *pixdata,
 	      check_overrun = image_buffer + length * bpp > image_limit;
 	      if (check_overrun)
 		length = (image_limit - image_buffer) / bpp;
+	      if (RLE_OVERRUN(bpp < 4 ? 3 : 4))
+	        {
+	          check_overrun = TRUE;
+	          break;
+	        }
 	      if (bpp < 4)	/* RGB */
 		do
 		  {
@@ -480,6 +542,11 @@ gdk_pixbuf_from_pixdata (const GdkPixdata *pixdata,
 		    image_buffer += 4;
 		  }
 		while (--length);
+	      if (RLE_OVERRUN(bpp))
+	        {
+	          check_overrun = TRUE;
+	          break;
+		}
 	      rle_buffer += bpp;
 	    }
 	  else
@@ -488,6 +555,11 @@ gdk_pixbuf_from_pixdata (const GdkPixdata *pixdata,
 	      check_overrun = image_buffer + length > image_limit;
 	      if (check_overrun)
 		length = image_limit - image_buffer;
+	      if (RLE_OVERRUN(length))
+	        {
+	          check_overrun = TRUE;
+	          break;
+		}
 	      memcpy (image_buffer, rle_buffer, length);
 	      image_buffer += length;
 	      rle_buffer += length;
@@ -628,6 +700,7 @@ save_rle_decoder (GString     *gstring,
  *
  * Returns: a newly-allocated string containing the C source form
  *   of @pixdata.
+ * Deprecated: 2.32: Use #GResource instead.
  **/
 GString*
 gdk_pixdata_to_csource (GdkPixdata        *pixdata,
@@ -744,7 +817,8 @@ gdk_pixdata_to_csource (GdkPixdata        *pixdata,
   if (cdata.dump_stream)
     {
       guint pix_length = img_buffer_end - img_buffer;
-      
+
+
       stream = gdk_pixdata_serialize (pixdata, &stream_length);
       img_buffer = stream;
       img_buffer_end = stream + stream_length;
@@ -894,6 +968,8 @@ gdk_pixdata_to_csource (GdkPixdata        *pixdata,
  *
  * Return value: A newly-created #GdkPixbuf structure with a reference,
  *   count of 1, or %NULL if an error occurred.
+ *
+ * Deprecated: 2.32: Use #GResource instead.
  **/
 GdkPixbuf*
 gdk_pixbuf_new_from_inline (gint          data_length,

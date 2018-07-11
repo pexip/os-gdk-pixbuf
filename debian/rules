@@ -1,24 +1,41 @@
 #!/usr/bin/make -f 
 
-export AUTOPOINT = true
-
-include /usr/share/cdbs/1/rules/autoreconf.mk
-include /usr/share/cdbs/1/rules/debhelper.mk
-include /usr/share/cdbs/1/rules/utils.mk
-include /usr/share/cdbs/1/class/gnome.mk
-include /usr/share/gnome-pkg-tools/1/rules/uploaders.mk
 include /usr/share/gnome-pkg-tools/1/rules/gnome-get-source.mk
 
-DEB_MAKE_CHECK_TARGET = check
-DEB_CONFIGURE_EXTRA_FLAGS := --without-libjasper \
-                             --without-libtiff \
-                             --with-x11 \
-                             --enable-introspection \
-                             --libdir=\$${prefix}/lib/$(DEB_HOST_MULTIARCH)
+%:
+	dh $@ --with gir,gnome
 
-DEB_DH_MAKESHLIBS_ARGS_libgdk-pixbuf2.0-0 += --add-udeb=libgdk-pixbuf2.0-0-udeb -X "/usr/lib/$(DEB_HOST_MULTIARCH)/gdk-pixbuf-2.0" -V -- -c4
+override_dh_auto_configure:
+	dh_auto_configure -- \
+		--with-x11 \
+		--enable-gtk-doc \
+		--enable-introspection \
+		--without-libtiff
 
-common-binary-fixup-arch::
+# temporary directory for the minimal MIME cache generation
+mimedir := debian/build-mime
+mimexml := /usr/share/mime/packages/freedesktop.org.xml
+
+infiles := \
+	libgdk-pixbuf2.0-0.triggers \
+	libgdk-pixbuf2.0-0.postinst \
+	libgdk-pixbuf2.0-0.postrm
+
+override_dh_install:
+	dh_install -X.la --list-missing
+	# process .in files
+	set -e; for file in $(infiles); do \
+		sed -e"s/#MULTIARCH#/$(DEB_HOST_MULTIARCH)/g" \
+			debian/$${file}.in > debian/$$file; \
+	done
+	# generate a minimal MIME cache for the udeb
+	mkdir -p $(mimedir)/packages
+	[ -f $(mimexml) ]
+	xsltproc -nonet debian/keep-png-only.xsl $(mimexml) \
+		> $(mimedir)/packages/png.freedesktop.org.xml
+	update-mime-database $(mimedir)
+	install -m 0644 -D $(mimedir)/mime.cache debian/libgdk-pixbuf2.0-0-udeb/usr/share/mime/mime.cache
+	# generate a loaders cache for the udeb
 	mkdir -p debian/libgdk-pixbuf2.0-0-udeb/usr/lib/$(DEB_HOST_MULTIARCH)/gdk-pixbuf-2.0/2.10.0
 	LD_LIBRARY_PATH=debian/libgdk-pixbuf2.0-0-udeb/usr/lib:$(LD_LIBRARY_PATH) \
 		debian/libgdk-pixbuf2.0-0/usr/lib/$(DEB_HOST_MULTIARCH)/gdk-pixbuf-2.0/gdk-pixbuf-query-loaders \
@@ -27,33 +44,15 @@ common-binary-fixup-arch::
 		> debian/libgdk-pixbuf2.0-0-udeb/usr/lib/$(DEB_HOST_MULTIARCH)/gdk-pixbuf-2.0/2.10.0/loaders.cache
 	chmod 0644 debian/libgdk-pixbuf2.0-0-udeb/usr/lib/$(DEB_HOST_MULTIARCH)/gdk-pixbuf-2.0/2.10.0/loaders.cache
 
-binary-install/libgdk-pixbuf2.0-0::
-	set -e; for script in postinst postrm; do \
-		sed -e"s/#MULTIARCH#/$(DEB_HOST_MULTIARCH)/g" \
-		    debian/$(cdbs_curpkg).$$script.in \
-		    > debian/$(cdbs_curpkg).$$script ; \
+override_dh_strip:
+	dh_strip --dbgsym-migration='libgdk-pixbuf2.0-0-dbg (<< 2.34.0-1~)'
+
+override_dh_makeshlibs:
+	dh_makeshlibs --add-udeb=libgdk-pixbuf2.0-0-udeb -X "/usr/lib/$(DEB_HOST_MULTIARCH)/gdk-pixbuf-2.0" -V -- -c4
+
+override_dh_clean:
+	dh_clean
+	set -e; for file in $(infiles); do \
+		rm -f debian/$$file; \
 	done
-
-common-install-arch::
-	set -e; for file in libgdk-pixbuf2.0-0.install libgdk-pixbuf2.0-dev.links \
-		libgdk-pixbuf2.0-0.triggers; \
-	do \
-		sed -e"s,\$${DEB_HOST_MULTIARCH},${DEB_HOST_MULTIARCH},g" \
-			debian/$${file}.in > debian/$$file; \
-	done
-
-# temporary directory for the minimal MIME cache generation
-mimedir = debian/build-mime
-mimexml = /usr/share/mime/packages/freedesktop.org.xml
-
-clean::
 	rm -rf $(mimedir)
-
-binary-install/libgdk-pixbuf2.0-0-udeb::
-	# generate a minimal MIME cache for the udeb
-	mkdir -p $(mimedir)/packages
-	[ -f $(mimexml) ]
-	xsltproc -nonet debian/keep-png-only.xsl $(mimexml) \
-		> $(mimedir)/packages/png.freedesktop.org.xml
-	update-mime-database $(mimedir)
-	dh_install -plibgdk-pixbuf2.0-0-udeb $(mimedir)/mime.cache usr/share/mime

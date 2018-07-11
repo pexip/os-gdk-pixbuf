@@ -26,7 +26,7 @@
 /* This loader is very hairy code.
  *
  * The main loop was not designed for incremental loading, so when it was hacked
- * in it got a bit messy.  Basicly, every function is written to expect a failed
+ * in it got a bit messy.  Basically, every function is written to expect a failed
  * read_gif, and lets you call it again assuming that the bytes are there.
  *
  * Return vals.
@@ -188,6 +188,7 @@ struct _GifContext
         GError **error;
 };
 
+/* The buffer must be at least 255 bytes long. */
 static int GetDataBlock (GifContext *, unsigned char *);
 
 
@@ -451,6 +452,7 @@ gif_get_extension (GifContext *context)
 
 static int ZeroDataBlock = FALSE;
 
+/* @buf must be at least 255 bytes long. */
 static int
 GetDataBlock (GifContext *context,
 	      unsigned char *buf)
@@ -1066,11 +1068,11 @@ gif_get_lzw (GifContext *context)
         
 	if (bound_flag && context->update_func) {
 		if (lower_bound <= upper_bound && first_pass == context->draw_pass) {
-                        maybe_update (context, 
+                        maybe_update (context,
                                       context->frame->x_offset,
                                       context->frame->y_offset + lower_bound,
                                       gdk_pixbuf_get_width (context->frame->pixbuf),
-                                      upper_bound - lower_bound);
+                                      upper_bound - lower_bound + 1);
 		} else {
 			if (lower_bound <= upper_bound) {
                                 maybe_update (context,
@@ -1456,7 +1458,8 @@ new_context (void)
 	context->update_func = NULL;
 	context->user_data = NULL;
 	context->buf = NULL;
-	context->amount_needed = 0;
+	context->amount_needed = 13;
+	context->buf = g_new (guchar, context->amount_needed);
 	context->gif89.transparent = -1;
 	context->gif89.delay_time = -1;
 	context->gif89.input_flag = -1;
@@ -1555,15 +1558,22 @@ gdk_pixbuf__gif_image_stop_load (gpointer data, GError **error)
 	GifContext *context = (GifContext *) data;
         gboolean retval = TRUE;
         
-        if (context->state != GIF_DONE || context->animation->frames == NULL) {
+        if (context->animation->frames == NULL) {
                 g_set_error_literal (error,
                                      GDK_PIXBUF_ERROR,
                                      GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
                                      _("GIF image was truncated or incomplete."));
 
                 retval = FALSE;
+        } else if (context->state != GIF_DONE) {
+                g_set_error_literal (error,
+                                     GDK_PIXBUF_ERROR,
+                                     GDK_PIXBUF_ERROR_INCOMPLETE_ANIMATION,
+                                     _("Not all frames of the GIF image were loaded."));
+
+                retval = FALSE;
         }
-        
+
         g_object_unref (context->animation);
 
   	g_free (context->buf);
@@ -1715,7 +1725,7 @@ MODULE_ENTRY (fill_info) (GdkPixbufFormat *info)
 
 	info->name = "gif";
         info->signature = (GdkPixbufModulePattern *) signature;
-	info->description = N_("The GIF image format");
+	info->description = NC_("image format", "GIF");
 	info->mime_types = (gchar **) mime_types;
 	info->extensions = (gchar **) extensions;
 	info->flags = GDK_PIXBUF_FORMAT_THREADSAFE;

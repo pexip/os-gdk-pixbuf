@@ -1,14 +1,313 @@
+gdk-pixbuf (2.36.5-2+deb9u2pexip1) pexip; urgency=medium
+
+  * Migrate to Stretch
+
+ -- John-Mark Bell <jmb@pexip.com>  Wed, 11 Jul 2018 13:15:07 +0100
+
+gdk-pixbuf (2.36.5-2+deb9u2) stretch-security; urgency=medium
+
+  * Fix CVE-2017-1000422 (and while we're add it also add patches for three
+    minor crash bugs (CVE-2017-6312, CVE-2017-6313.patch, CVE-2017-6314))
+
+ -- Moritz Mühlenhoff <jmm@debian.org>  Mon, 15 Jan 2018 00:04:23 +0100
+
+gdk-pixbuf (2.36.5-2+deb9u1) stretch-security; urgency=medium
+
+  * CVE-2017-2862
+
+ -- Moritz Muehlenhoff <jmm@debian.org>  Thu, 14 Sep 2017 23:16:04 +0200
+
+gdk-pixbuf (2.36.5-2) unstable; urgency=medium
+
+  * Unbranch - that was short lived. Upload the stable release to unstable.
+
+ -- Iain Lane <laney@debian.org>  Thu, 16 Feb 2017 18:02:30 +0000
+
+gdk-pixbuf (2.36.5-1) experimental; urgency=medium
+
+  * Branch to experimental - update Vcs-*
+  * New upstream release 2.36.5
+    + Fix mimetypes for thumbnailer
+    + Handle fseek failure
+    + Fix signed/unsigned handling
+    + Fix an overflow check
+    + Handle extreme scaling better
+  * Bump libglib2.0 BD to 2.48.0, per configure.ac
+  * Try replacing d/p/01-disable-oom-test.patch with
+    d/p/0001-skip-perturb-for-cve-2015-4491-original-test.patch: This should
+    ideally allow the test to be run without OOMing, which is better than not
+    running it at all. (The proper fix is still to be investigated.)
+
+ -- Iain Lane <laney@debian.org>  Tue, 14 Feb 2017 11:36:07 +0000
+
+gdk-pixbuf (2.36.4-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Emilio Pozuelo Monfort <pochu@debian.org>  Tue, 17 Jan 2017 00:45:42 +0100
+
+gdk-pixbuf (2.36.3-1) unstable; urgency=medium
+
+  [ Emilio Pozuelo Monfort ]
+  * New upstream release.
+
+ -- Iain Lane <laney@debian.org>  Mon, 09 Jan 2017 14:23:04 +0000
+
+gdk-pixbuf (2.36.2-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Michael Biebl <biebl@debian.org>  Thu, 22 Dec 2016 02:20:02 +0100
+
+gdk-pixbuf (2.36.1-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Michael Biebl <biebl@debian.org>  Sat, 17 Dec 2016 02:28:56 +0100
+
+gdk-pixbuf (2.36.0-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Michael Biebl <biebl@debian.org>  Mon, 19 Sep 2016 19:10:55 +0200
+
+gdk-pixbuf (2.35.5-1) unstable; urgency=medium
+
+  * New upstream development release.
+  * Drop 02-tests-Make-sure-to-NULL-terminate-the-arguments-pass.patch, merged
+    upstream.
+  * Bump debhelper compat level to 10.
+  * Use dh_install --list-missing to show uninstalled files and exclude
+    libtool .la files.
+
+ -- Michael Biebl <biebl@debian.org>  Tue, 13 Sep 2016 16:17:03 +0200
+
+gdk-pixbuf (2.35.4-4) unstable; urgency=medium
+
+  * Move gtk-doc-tools and libglib2.0-doc from Build-Depends-Indep to
+    Build-Depends.
+
+ -- Michael Biebl <biebl@debian.org>  Thu, 08 Sep 2016 19:17:54 +0200
+
+gdk-pixbuf (2.35.4-3) unstable; urgency=medium
+
+  * Make sure to NULL terminate the arguments passed to g_test_get_filename().
+    Otherwise the /pixbuf/composite2 test will segfault. (Closes: #837030)
+  * Make test-suite failures fatal again.
+
+ -- Michael Biebl <biebl@debian.org>  Thu, 08 Sep 2016 18:59:21 +0200
+
+gdk-pixbuf (2.35.4-2) unstable; urgency=medium
+
+  * Make test-suite failures non-fatal for now to not block ongoing
+    transitions.
+  * Build gtk-doc documentation via --enable-gtk-doc.
+  * Bump Standards-Version to 3.9.8.
+
+ -- Michael Biebl <biebl@debian.org>  Thu, 08 Sep 2016 16:49:06 +0200
+
+gdk-pixbuf (2.35.4-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Update symbols file with new additions. A few private symbols were
+    dropped.
+  * Use dh-exec for substituting multiarch paths in libgdk-pixbuf2.0-0.install
+    and libgdk-pixbuf2.0-dev.links.
+  * Convert from cdbs to dh.
+
+ -- Michael Biebl <biebl@debian.org>  Wed, 07 Sep 2016 18:00:22 +0200
+
+gdk-pixbuf (2.34.0-1) unstable; urgency=medium
+
+  [ Emilio Pozuelo Monfort ]
+  * debian/patches/01-disable-oom-test.patch:
+    + Disable a test on kfreebsd that fails because it runs out of
+      memory on those buildds. Closes: #818233.
+
+  [ Michael Biebl ]
+  * New upstream release.
+  * Drop libgdk-pixbuf2.0-0-dbg package now that we have automatic dbgsym
+    packages.
+  * Ensure proper upgrade from libgdk-pixbuf2.0-0-dbg to new dbgsym packages
+    by using dh_strip --dbgsym-migration. Bump Build-Depends on debhelper
+    accordingly.
+  * Tighten dependency on libpng-dev. We need to ensure that
+    libgdk-pixbuf2.0-dev pulls in the correct version of libpng-dev as it
+    encodes the libpng API version it was built against in gdk-pixbuf2.0.pc.
+    (Closes: #819779)
+  * Upload to unstable.
+
+ -- Michael Biebl <biebl@debian.org>  Sat, 16 Apr 2016 15:39:05 +0200
+
+gdk-pixbuf (2.33.2-1) experimental; urgency=medium
+
+  [ Andreas Henriksson ]
+  * Add share-mime-info dependency (Closes: #790423)
+  * Bump Standards-Version to 3.9.7
+
+  [ Tobias Frost ]
+  * Move gtk-doc-tools to Build-Depends-Indep (Closes: #808332)
+
+  [ Andreas Henriksson ]
+  * New upstream release.
+
+ -- Andreas Henriksson <andreas@fatal.se>  Mon, 14 Mar 2016 22:49:34 +0100
+
+gdk-pixbuf (2.32.3-1.2) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * Change libpng12-dev runtime-dependency to libpng-dev, to ease libpng
+    transition.
+    - Change also build-dependency to libpng-dev (Closes: #642265)
+
+ -- Gianfranco Costamagna <locutusofborg@debian.org>  Wed, 27 Jan 2016 18:24:08 +0100
+
+gdk-pixbuf (2.32.3-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Michael Biebl <biebl@debian.org>  Tue, 15 Dec 2015 17:53:41 +0100
+
+gdk-pixbuf (2.32.2-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Update watch file to track stable releases only.
+
+ -- Michael Biebl <biebl@debian.org>  Wed, 11 Nov 2015 02:01:07 +0100
+
+gdk-pixbuf (2.32.1-1) unstable; urgency=medium
+
+  * New upstream release 2.32.1
+  * Drop patch which is applied upstream
+
+ -- Iain Lane <laney@debian.org>  Mon, 05 Oct 2015 17:51:16 +0100
+
+gdk-pixbuf (2.32.0-1) unstable; urgency=medium
+
+  * New upstream release 2.32.0
+  * debian/patches/0001-Skip-tests-when-we-can-t-run-them-due-to-lack-of-mem.patch:
+    Cherry-pick patch from upstream. If we can't run some of the new large
+    tests due to a lack of memory then skip them. (Closes: #799239)
+  * debian/patches/skip-large-file-tests-instead-of-ooming: Drop - this was a
+    previous version of the above patch, which has now been sent upstream.
+
+ -- Iain Lane <laney@debian.org>  Tue, 22 Sep 2015 16:15:30 +0100
+
+gdk-pixbuf (2.31.7-3) experimental; urgency=medium
+
+  * debian/patches/skip-large-file-tests-instead-of-ooming: This didn't catch
+    all cases. Run some tests in a subprocess so that we can skip them if they
+    abort due to malloc failing.
+
+ -- Iain Lane <laney@debian.org>  Fri, 18 Sep 2015 22:08:41 +0100
+
+gdk-pixbuf (2.31.7-2) experimental; urgency=medium
+
+  * Run the tests with VERBOSE=1
+  * debian/patches/skip-large-file-tests-instead-of-ooming: Add a new patch to
+    skip tests which operate on large files that don't fit in memory on some
+    constrained systems. Not forwarded yet - this upload is to test it on our
+    buildds.
+
+ -- Iain Lane <laney@debian.org>  Thu, 17 Sep 2015 14:38:08 +0100
+
+gdk-pixbuf (2.31.7-1) unstable; urgency=medium
+
+  [ Michael Biebl ]
+  * New upstream release.
+    - Fixes CVE-2015-4491 (crash with malicious BMP files)
+  * Disable jasper support. It's an abandoned code base with frequent security
+    issues and JPEG2000 is an exotic fringe format unused in practice.
+    Closes: #796270
+
+  [ Iain Lane ]
+  * New upstream release 2.31.7
+    - Fix several integer overflows (Closes: #753569)
+    - Fix build failure with --disable-modules
+    - Port animations to GTask
+
+ -- Iain Lane <laney@debian.org>  Tue, 15 Sep 2015 16:24:31 +0100
+
+gdk-pixbuf (2.31.5-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Remove obsolete Breaks/Replaces from pre-wheezy.
+
+ -- Michael Biebl <biebl@debian.org>  Wed, 22 Jul 2015 01:19:13 +0200
+
+gdk-pixbuf (2.31.4-2) unstable; urgency=medium
+
+  * Install typelib files into multiarch paths.
+  * Mark gir package as Multi-Arch: same.
+  * Point Vcs-* to the unstable branch.
+
+ -- Michael Biebl <biebl@debian.org>  Wed, 27 May 2015 01:31:18 +0200
+
+gdk-pixbuf (2.31.4-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Upload to unstable.
+
+ -- Michael Biebl <biebl@debian.org>  Wed, 20 May 2015 00:07:11 +0200
+
+gdk-pixbuf (2.31.3-1) experimental; urgency=medium
+
+  * New upstream release 2.31.3
+    - Revert an annotation change that broke bindings
+    - Clean up configure
+    - Fix Visual Studio build
+    - Define MAP_ANONYMOUS when needed
+    - Include gi18n-lib.h where needed
+  * Drop debian/patches: the revert is upstream in this release.
+  * premature-end.* are disted properly now - drop our local copy and manual
+    installation.
+
+ -- Iain Lane <laney@debian.org>  Wed, 11 Mar 2015 12:38:43 +0000
+
+gdk-pixbuf (2.31.2-2) experimental; urgency=medium
+
+  * revert-0001-lib-Annotate-var-arg-gdk_pixbuf_save.patch: Revert upstream
+    commit which breaks API which applications actually use.
+
+ -- Iain Lane <laney@debian.org>  Wed, 25 Feb 2015 19:51:11 +0000
+
+gdk-pixbuf (2.31.2-1) experimental; urgency=medium
+
+  * debian/watch: Update to find unstable versions too.
+  * New upstream release 2.31.2
+    + API changes:
+      - Deprecate GdkPixdata
+      - Add gdk_pixbuf_get_options() helper to list set options
+      - Annotations fixes for various functions
+      - Remove incorrect info about area-prepared signal
+    + Image format support changes
+      - Flag multi-page TIFF files
+      - Fix memory usage for GIF animations, add note about minimum frame
+        length (LP: #139067)
+      - Return an error for truncated PNG files
+      - Add density (DPI) support for JPEG, PNG and TIFF
+      - Fix reading CMYK JPEG files generated by Photoshop
+      - Allow saving 1-bit mono TIFF files as used in faxes
+      - Simplify loader names
+      - Fix loading GIF files when the first write is short
+      - Add progressive loading to ICNS files
+      - Add support for 256x256 ICO files
+      - Fix reading MS AMCap2 BMP files
+    + Other:
+      - Honour requested depth in Xlib
+      - Special-case compositing/copying with no scaling
+      - Add relocation support to OSX and Linux
+  * Upstream forgot to dist premature-end.* - bring them in temporarily to get
+    a fully passing testsuite.
+  * Add new symbol to symbols file.
+
+ -- Iain Lane <laney@debian.org>  Tue, 24 Feb 2015 18:10:15 +0000
+
 gdk-pixbuf (2.31.1-2+deb8u7pexip1) pexip; urgency=medium
 
   * New upstream release
 
  -- John-Mark Bell <jmb@pexip.com>  Tue, 16 Jan 2018 01:11:27 +0000
-
-gdk-pixbuf (2.31.1-2+deb8u7) jessie-security; urgency=medium
-
-  * CVE-2017-1000422
-
- -- Moritz Muehlenhoff <jmm@debian.org>  Sat, 13 Jan 2018 13:25:29 +0100
 
 gdk-pixbuf (2.31.1-2+deb8u6pexip1) pexip; urgency=medium
 
@@ -16,54 +315,11 @@ gdk-pixbuf (2.31.1-2+deb8u6pexip1) pexip; urgency=medium
 
  -- Vincent Sanders <vince@pexip.com>  Fri, 06 Oct 2017 14:19:08 +0000
 
-gdk-pixbuf (2.31.1-2+deb8u6) jessie-security; urgency=medium
-
-  * CVE-2017-2862 (Closes: #874552)
-
- -- Moritz Muehlenhoff <jmm@hullmann>  Fri, 15 Sep 2017 18:57:50 +0200
-
 gdk-pixbuf (2.31.1-2+deb8u5pexip1) pexip; urgency=medium
 
   * Prepare Pexip packaging
 
  -- Vincent Sanders <vince@pexip.com>  Fri, 06 Oct 2017 12:19:08 +0000
-
-gdk-pixbuf (2.31.1-2+deb8u5) jessie-security; urgency=high
-
-  * Non-maintainer upload by the Security Team.
-  * CVE-2015-8875: Integer overflows in various pixops functions
-  * CVE-2015-7552: Heap-based buffer overflow in the gdk_pixbuf_flip function
-  * ico: Protect against overflow
-  * bmp: Reject bogus depth
-  * bmp: Reject impossible palette size
-
- -- Salvatore Bonaccorso <carnil@debian.org>  Sun, 29 May 2016 15:19:54 +0200
-
-gdk-pixbuf (2.31.1-2+deb8u4) jessie-security; urgency=high
-
-  * Non-maintainer upload by the Security Team.
-  * Add additional patch for CVE-2015-4491.
-    The n_x variable could be made large enough to overflow, which was
-    missed in the initial commit upstream.
-
- -- Salvatore Bonaccorso <carnil@debian.org>  Tue, 15 Dec 2015 19:47:31 +0100
-
-gdk-pixbuf (2.31.1-2+deb8u3) jessie-security; urgency=high
-
-  * Non-maintainer upload by the Security Team.
-  * Add patches to fix CVE-2015-7673.
-    CVE-2015-7673: Heap overflow and DoS vulnerability when scaling a TGA
-    file.
-  * Add patch to fix CVE-2015-7674.
-    CVE-2015-7674: Heap overflow when scaling a GIF file.
-
- -- Salvatore Bonaccorso <carnil@debian.org>  Sat, 24 Oct 2015 16:43:46 +0200
-
-gdk-pixbuf (2.31.1-2+deb8u2) jessie-security; urgency=medium
-
-  * CVE-2015-4491
-
- -- Moritz Muehlenhoff <jmm@debian.org>  Tue, 18 Aug 2015 12:08:47 +0000
 
 gdk-pixbuf (2.31.1-2) unstable; urgency=medium
 
