@@ -26,7 +26,11 @@
 #include <string.h>
 #include <errno.h>
 
-#include "gdk-pixbuf-private.h"
+#include <glib-object.h>
+#include <glib/gi18n-lib.h>
+
+#include "gdk-pixbuf-core.h"
+#include "gdk-pixbuf-io.h"
 #include "gdk-pixbuf-loader.h"
 
 G_MODULE_EXPORT void fill_vtable (GdkPixbufModule * module);
@@ -95,7 +99,8 @@ load_resources (unsigned size, IN gpointer data, gsize datalen,
       blocklen = GUINT32_FROM_BE (header->size);
 
       /* Check that blocklen isn't garbage */
-      if (blocklen > icnslen - (current - bytes))
+      if (blocklen > icnslen - (current - bytes) ||
+	  blocklen < sizeof (IcnsBlockHeader))
         return FALSE;
 
       switch (size)

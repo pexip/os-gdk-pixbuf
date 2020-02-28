@@ -104,6 +104,8 @@ typedef struct
         gint header_buf_offset;
         GdkPixbufModule *image_module;
         gpointer context;
+        gint original_width;
+        gint original_height;
         gint width;
         gint height;
         gboolean size_fixed;
@@ -216,6 +218,8 @@ gdk_pixbuf_loader_init (GdkPixbufLoader *loader)
         GdkPixbufLoaderPrivate *priv;
   
         priv = g_new0 (GdkPixbufLoaderPrivate, 1);
+        priv->original_width = -1;
+        priv->original_height = -1;
         priv->width = -1;
         priv->height = -1;
 
@@ -284,6 +288,9 @@ gdk_pixbuf_loader_size_func (gint *width, gint *height, gpointer loader)
 {
         GdkPixbufLoaderPrivate *priv = GDK_PIXBUF_LOADER (loader)->priv;
 
+        priv->original_width = *width;
+        priv->original_height = *height;
+
         /* allow calling gdk_pixbuf_loader_set_size() before the signal */
         if (priv->width == -1 && priv->height == -1) 
                 {
@@ -327,8 +334,25 @@ gdk_pixbuf_loader_prepare (GdkPixbuf          *pixbuf,
 
         if (anim)
                 g_object_ref (anim);
-        else
+        else {
+                if (priv->original_width > 0) {
+                        char *original_width_str = NULL;
+
+                        original_width_str = g_strdup_printf ("%d", priv->original_width);
+                        gdk_pixbuf_set_option (pixbuf, "original-width", original_width_str);
+                        g_free (original_width_str);
+                }
+
+                if (priv->original_height > 0) {
+                        char *original_height_str = NULL;
+
+                        original_height_str = g_strdup_printf ("%d", priv->original_height);
+                        gdk_pixbuf_set_option (pixbuf, "original-height", original_height_str);
+                        g_free (original_height_str);
+                }
+
                 anim = gdk_pixbuf_non_anim_new (pixbuf);
+        }
   
 	if (priv->needs_scale && width != 0 && height != 0) {
 		priv->animation  = GDK_PIXBUF_ANIMATION (_gdk_pixbuf_scaled_anim_new (anim,
@@ -379,8 +403,8 @@ gdk_pixbuf_loader_ensure_error (GdkPixbufLoader *loader,
         g_set_error (error,
                      GDK_PIXBUF_ERROR,
                      GDK_PIXBUF_ERROR_FAILED,
-                     _("Internal error: Image loader module '%s' failed to"
-                       " complete an operation, but didn't give a reason for"
+                     _("Internal error: Image loader module “%s” failed to"
+                       " complete an operation, but didn’t give a reason for"
                        " the failure"),
                      priv->image_module->module_name);
 }
@@ -421,7 +445,7 @@ gdk_pixbuf_loader_load_module (GdkPixbufLoader *loader,
                         g_set_error (error,
                                      GDK_PIXBUF_ERROR,
                                      GDK_PIXBUF_ERROR_UNSUPPORTED_OPERATION,
-                                     _("Incremental loading of image type '%s' is not supported"),
+                                     _("Incremental loading of image type “%s” is not supported"),
                                      priv->image_module->module_name);
 
                         return 0;

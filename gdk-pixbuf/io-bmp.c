@@ -28,7 +28,11 @@
 #include <unistd.h>
 #endif
 #include <string.h>
-#include "gdk-pixbuf-private.h"
+#include <glib-object.h>
+#include <glib/gi18n-lib.h>
+
+#include "gdk-pixbuf-core.h"
+#include "gdk-pixbuf-io.h"
 
 #define DUMPBIH 0
 
@@ -432,6 +436,10 @@ static gboolean DecodeHeader(unsigned char *BFH, unsigned char *BIH,
 		State->LineWidth = (State->LineWidth / 4) * 4 + 4;
 
 	if (State->pixbuf == NULL) {
+		guint64 len;
+		int rowstride;
+		gboolean has_alpha;
+
 		if (State->size_func) {
 			gint width = State->Header.width;
 			gint height = State->Header.height;
@@ -444,19 +452,45 @@ static gboolean DecodeHeader(unsigned char *BFH, unsigned char *BIH,
 			}
 		}
 
-		if (State->Type == 32 || 
-		    State->Compressed == BI_RLE4 || 
+		/* rowstride is always >= width, so do an early check for bogus header */
+		if (State->Header.width <= 0 ||
+		    State->Header.height <= 0 ||
+		    !g_uint64_checked_mul (&len, State->Header.width, State->Header.height) ||
+		    len > G_MAXINT) {
+			g_set_error_literal (error,
+                                             GDK_PIXBUF_ERROR,
+                                             GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
+                                             _("BMP image has bogus header data"));
+			State->read_state = READ_STATE_ERROR;
+			return FALSE;
+		}
+
+		if (State->Type == 32 ||
+		    State->Compressed == BI_RLE4 ||
 		    State->Compressed == BI_RLE8)
-			State->pixbuf =
-				gdk_pixbuf_new(GDK_COLORSPACE_RGB, TRUE, 8,
-					       (gint) State->Header.width,
-					       (gint) State->Header.height);
+			has_alpha = TRUE;
 		else
-			State->pixbuf =
-				gdk_pixbuf_new(GDK_COLORSPACE_RGB, FALSE, 8,
-					       (gint) State->Header.width,
-					       (gint) State->Header.height);
-		
+			has_alpha = FALSE;
+
+		rowstride = gdk_pixbuf_calculate_rowstride (GDK_COLORSPACE_RGB, has_alpha, 8,
+							    (gint) State->Header.width,
+							    (gint) State->Header.height);
+
+		if (rowstride <= 0 ||
+		    !g_uint64_checked_mul (&len, rowstride, State->Header.height) ||
+		    len > G_MAXINT) {
+			g_set_error_literal (error,
+                                             GDK_PIXBUF_ERROR,
+                                             GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
+                                             _("BMP image has bogus header data"));
+			State->read_state = READ_STATE_ERROR;
+			return FALSE;
+		}
+
+		State->pixbuf = gdk_pixbuf_new (GDK_COLORSPACE_RGB, has_alpha, 8,
+						(gint) State->Header.width,
+						(gint) State->Header.height);
+
 		if (State->pixbuf == NULL) {
 			g_set_error_literal (error,
                                              GDK_PIXBUF_ERROR,
@@ -464,17 +498,19 @@ static gboolean DecodeHeader(unsigned char *BFH, unsigned char *BIH,
                                              _("Not enough memory to load bitmap image"));
 			State->read_state = READ_STATE_ERROR;
 			return FALSE;
-			}
-		
+		}
+
 		if (State->prepared_func != NULL)
 			/* Notify the client that we are ready to go */
 			(*State->prepared_func) (State->pixbuf, NULL, State->user_data);
 		
 		/* make all pixels initially transparent */
 		if (State->Compressed == BI_RLE4 || State->Compressed == BI_RLE8) {
-			memset (State->pixbuf->pixels, 0, State->pixbuf->rowstride * State->Header.height);
-			State->compr.p = State->pixbuf->pixels 
-				+ State->pixbuf->rowstride * (State->Header.height- 1);
+			gint rowstride = gdk_pixbuf_get_rowstride (State->pixbuf);
+
+			memset (gdk_pixbuf_get_pixels (State->pixbuf), 0, rowstride * State->Header.height);
+			State->compr.p = gdk_pixbuf_get_pixels (State->pixbuf) 
+				+ rowstride * (State->Header.height- 1);
 		}
 	}
 	
@@ -746,12 +782,10 @@ static gboolean gdk_pixbuf__bmp_image_stop_load(gpointer data, GError **error)
 		g_object_unref(context->pixbuf);
 
 	if (context->read_state == READ_STATE_HEADERS) {
-                if (error && *error == NULL) {
-                        g_set_error_literal (error,
-                                             GDK_PIXBUF_ERROR,
-                                             GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
-                                             _("Premature end-of-file encountered"));
-                }
+                g_set_error_literal (error,
+                                     GDK_PIXBUF_ERROR,
+                                     GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
+                                     _("Premature end-of-file encountered"));
 		retval = FALSE;
 	}
 	
@@ -771,13 +805,14 @@ static void OneLine32(struct bmp_progressive_state *context)
 	int i;
 	guchar *pixels;
 	guchar *src;
+	gint rowstride = gdk_pixbuf_get_rowstride (context->pixbuf);
 
 	if (!context->Header.Negative)
-		pixels = (context->pixbuf->pixels +
-			  context->pixbuf->rowstride * (context->Header.height - context->Lines - 1));
+		pixels = (gdk_pixbuf_get_pixels (context->pixbuf) +
+			  rowstride * (context->Header.height - context->Lines - 1));
 	else
-		pixels = (context->pixbuf->pixels +
-			  context->pixbuf->rowstride * context->Lines);
+		pixels = (gdk_pixbuf_get_pixels (context->pixbuf) +
+			  rowstride * context->Lines);
 
 	src = context->buff;
 
@@ -832,16 +867,15 @@ static void OneLine24(struct bmp_progressive_state *context)
 {
 	gint X;
 	guchar *Pixels;
+	gint rowstride = gdk_pixbuf_get_rowstride (context->pixbuf);
 
 	X = 0;
 	if (context->Header.Negative == 0)
-		Pixels = (context->pixbuf->pixels +
-			  context->pixbuf->rowstride *
-			  (context->Header.height - context->Lines - 1));
+		Pixels = (gdk_pixbuf_get_pixels (context->pixbuf) +
+			  rowstride * (context->Header.height - context->Lines - 1));
 	else
-		Pixels = (context->pixbuf->pixels +
-			  context->pixbuf->rowstride *
-			  context->Lines);
+		Pixels = (gdk_pixbuf_get_pixels (context->pixbuf) +
+			  rowstride * context->Lines);
 	while (X < context->Header.width) {
 		Pixels[X * 3 + 0] = context->buff[X * 3 + 2];
 		Pixels[X * 3 + 1] = context->buff[X * 3 + 1];
@@ -856,13 +890,14 @@ static void OneLine16(struct bmp_progressive_state *context)
 	int i;
 	guchar *pixels;
 	guchar *src;
+	gint rowstride = gdk_pixbuf_get_rowstride (context->pixbuf);
 
 	if (!context->Header.Negative)
-		pixels = (context->pixbuf->pixels +
-			  context->pixbuf->rowstride * (context->Header.height - context->Lines - 1));
+		pixels = (gdk_pixbuf_get_pixels (context->pixbuf) +
+			  rowstride * (context->Header.height - context->Lines - 1));
 	else
-		pixels = (context->pixbuf->pixels +
-			  context->pixbuf->rowstride * context->Lines);
+		pixels = (gdk_pixbuf_get_pixels (context->pixbuf) +
+			  rowstride * context->Lines);
 
 	src = context->buff;
 
@@ -916,16 +951,15 @@ static void OneLine8(struct bmp_progressive_state *context)
 {
 	gint X;
 	guchar *Pixels;
+	gint rowstride = gdk_pixbuf_get_rowstride (context->pixbuf);
 
 	X = 0;
 	if (context->Header.Negative == 0)
-		Pixels = (context->pixbuf->pixels +
-			  context->pixbuf->rowstride *
-			  (context->Header.height - context->Lines - 1));
+		Pixels = (gdk_pixbuf_get_pixels (context->pixbuf) +
+			  rowstride * (context->Header.height - context->Lines - 1));
 	else
-		Pixels = (context->pixbuf->pixels +
-			  context->pixbuf->rowstride *
-			  context->Lines);
+		Pixels = (gdk_pixbuf_get_pixels (context->pixbuf) +
+			  rowstride * context->Lines);
 	while (X < context->Header.width) {
 		Pixels[X * 3 + 0] =
 		    context->Colormap[context->buff[X]][2];
@@ -941,16 +975,15 @@ static void OneLine4(struct bmp_progressive_state *context)
 {
 	gint X;
 	guchar *Pixels;
+	gint rowstride = gdk_pixbuf_get_rowstride (context->pixbuf);
 
 	X = 0;
 	if (context->Header.Negative == 0)
-		Pixels = (context->pixbuf->pixels +
-			  context->pixbuf->rowstride *
-			  (context->Header.height - context->Lines - 1));
+		Pixels = (gdk_pixbuf_get_pixels (context->pixbuf) +
+			  rowstride * (context->Header.height - context->Lines - 1));
 	else
-		Pixels = (context->pixbuf->pixels +
-			  context->pixbuf->rowstride *
-			  context->Lines);
+		Pixels = (gdk_pixbuf_get_pixels (context->pixbuf) +
+			  rowstride * context->Lines);
 
 	while (X < context->Header.width) {
 		guchar Pix;
@@ -982,16 +1015,15 @@ static void OneLine1(struct bmp_progressive_state *context)
 {
 	gint X;
 	guchar *Pixels;
+	gint rowstride = gdk_pixbuf_get_rowstride (context->pixbuf);
 
 	X = 0;
 	if (context->Header.Negative == 0)
-		Pixels = (context->pixbuf->pixels +
-			  context->pixbuf->rowstride *
-			  (context->Header.height - context->Lines - 1));
+		Pixels = (gdk_pixbuf_get_pixels (context->pixbuf) +
+			  rowstride * (context->Header.height - context->Lines - 1));
 	else
-		Pixels = (context->pixbuf->pixels +
-			  context->pixbuf->rowstride *
-			  context->Lines);
+		Pixels = (gdk_pixbuf_get_pixels (context->pixbuf) +
+			  rowstride * context->Lines);
 	while (X < context->Header.width) {
 		gint Bit;
 
@@ -1110,8 +1142,8 @@ DoCompressed(struct bmp_progressive_state *context, GError **error)
 				case END_OF_LINE:
 					context->compr.x = 0;
 					context->compr.y++;
-					context->compr.p = context->pixbuf->pixels 
-						+ (context->pixbuf->rowstride * (context->Header.height - context->compr.y - 1))
+					context->compr.p = gdk_pixbuf_get_pixels (context->pixbuf) 
+						+ (gdk_pixbuf_get_rowstride (context->pixbuf) * (context->Header.height - context->compr.y - 1))
 						+ (4 * context->compr.x);
 					context->compr.phase = NEUTRAL;
 					break;
@@ -1136,8 +1168,8 @@ DoCompressed(struct bmp_progressive_state *context, GError **error)
 			    break;
 		    case DELTA_Y:
 			    context->compr.y += c;
-			    context->compr.p = context->pixbuf->pixels 
-				    + (context->pixbuf->rowstride * (context->Header.height - context->compr.y - 1))
+			    context->compr.p = gdk_pixbuf_get_pixels (context->pixbuf) 
+				    + (gdk_pixbuf_get_rowstride (context->pixbuf) * (context->Header.height - context->compr.y - 1))
 				    + (4 * context->compr.x);
 			    context->compr.phase = NEUTRAL;
 			    break;
@@ -1387,7 +1419,7 @@ gdk_pixbuf__bmp_image_save_to_callback (GdkPixbufSaveFunc   save_func,
 		g_set_error_literal (error,
                                      GDK_PIXBUF_ERROR,
                                      GDK_PIXBUF_ERROR_INSUFFICIENT_MEMORY,
-                                     _("Couldn't allocate memory for saving BMP file"));
+                                     _("Couldn’t allocate memory for saving BMP file"));
 		return FALSE;
 	}
 
@@ -1428,7 +1460,7 @@ save_to_file_cb (const gchar *buf,
 		g_set_error_literal (error,
                                      GDK_PIXBUF_ERROR,
                                      GDK_PIXBUF_ERROR_FAILED,
-                                     _("Couldn't write to BMP file"));
+                                     _("Couldn’t write to BMP file"));
 		return FALSE;
 	}
 	

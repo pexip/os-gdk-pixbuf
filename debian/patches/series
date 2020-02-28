@@ -1,3 +1,1 @@
-0001-skip-perturb-for-cve-2015-4491-original-test.patch
-CVE-2017-2862.patch
-CVE-2017-1000422_CVE-2017-6312_CVE-2017-6313_CVE-2017-6314.patch
+Remove-test-for-GNOME-753605.patch
