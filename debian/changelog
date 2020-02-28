@@ -1,3 +1,9 @@
+gdk-pixbuf (2.38.1+dfsg-1pexip1) pexip; urgency=medium
+
+  * Migrate to Buster
+
+ -- Vincent Sanders <vince@pexip.com>  Fri, 28 Feb 2020 21:13:48 +0000
+
 gdk-pixbuf (2.38.1+dfsg-1) unstable; urgency=medium
 
   * New upstream release
