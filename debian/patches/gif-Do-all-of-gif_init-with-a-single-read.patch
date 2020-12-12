@@ -1,0 +1,90 @@
+From: Simon McVittie <smcv@debian.org>
+Date: Sat, 12 Dec 2020 17:32:08 +0000
+Subject: gif: Do all of gif_init() with a single read
+
+As documented in the introductory comment, the interface of the various
+functions in the GIF loader is that they read all the bytes they need,
+or return -1 if not enough are available. Since commit
+5212d69f "gif: Replace old buffer management code with GByteArray",
+the incremental loader strictly depends on that assumption.
+
+Unfortunately, gif_init() didn't conform to that interface. If there
+were enough bytes available for the GIF signature (GIF87a or GIF89a)
+but not enough bytes for the screen descriptor, it would return -1
+having already consumed the first 6 bytes of the stream. A subsequent
+retry with more data available would start from the beginning of the
+screen descriptor, and immediately raise an error because the screen
+descriptor is extremely unlikely to start with another copy of the
+"GIF8" magic number.
+
+The regression test tests/pixbuf-short-gif-write.c would have detected
+this, but was accidentally disabled by commit 7f0b214a "tests:
+Conditionally build and run tests".
+
+This seems most easily fixed by reading the whole of the 13-byte
+fixed-length header in one go. Adjust the offsets into the buffer
+used to parse the screen descriptor accordingly.
+
+Signed-off-by: Simon McVittie <smcv@debian.org>
+Forwarded: https://gitlab.gnome.org/GNOME/gdk-pixbuf/-/merge_requests/95
+---
+ gdk-pixbuf/io-gif.c | 27 ++++++++++++++-------------
+ 1 file changed, 14 insertions(+), 13 deletions(-)
+
+diff --git a/gdk-pixbuf/io-gif.c b/gdk-pixbuf/io-gif.c
+index 57e72d8..64a492a 100644
+--- a/gdk-pixbuf/io-gif.c
++++ b/gdk-pixbuf/io-gif.c
+@@ -513,15 +513,22 @@ gif_prepare_lzw (GifContext *context)
+ 	return 0;
+ }
+ 
+-/* needs 13 bytes to proceed. */
++/*
++ * Read the GIF signature and screen descriptor.
++ *
++ * | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9  | 10     | 11 | 12 |
++ * |-----------|-----------|-----------------------------------|
++ * | magic     | version   | screen descriptor                 |
++ * | G | I | F | 8 | 9 | a | width | height | colors | ignored |
++ */
+ static gint
+ gif_init (GifContext *context)
+ {
+-	unsigned char buf[16];
++	unsigned char buf[13];
+ 	char version[4];
+         gint width, height;
+ 
+-	if (!gif_read (context, buf, 6)) {
++	if (!gif_read (context, buf, 13)) {
+ 		/* Unable to read magic number,
+                  * gif_read() should have set error
+                  */
+@@ -554,22 +561,16 @@ gif_init (GifContext *context)
+ 		return -2;
+ 	}
+ 
+-	/* read the screen descriptor */
+-	if (!gif_read (context, buf, 7)) {
+-		/* Failed to read screen descriptor, error set */
+-		return -1;
+-	}
+-
+-	context->width = LM_to_uint (buf[0], buf[1]);
+-	context->height = LM_to_uint (buf[2], buf[3]);
++	context->width = LM_to_uint (buf[6], buf[7]);
++	context->height = LM_to_uint (buf[8], buf[9]);
+         /* The 4th byte is
+          * high bit: whether to use the background index
+          * next 3:   color resolution
+          * next:     whether colormap is sorted by priority of allocation
+          * last 3:   size of colormap
+          */
+-	context->global_bit_pixel = 2 << (buf[4] & 0x07);
+-        context->has_global_cmap = (buf[4] & 0x80) != 0;
++	context->global_bit_pixel = 2 << (buf[10] & 0x07);
++        context->has_global_cmap = (buf[10] & 0x80) != 0;
+ 
+         context->animation->width = context->width;
+         context->animation->height = context->height;

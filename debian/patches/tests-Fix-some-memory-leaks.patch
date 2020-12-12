@@ -1,0 +1,38 @@
+From: Simon McVittie <smcv@debian.org>
+Date: Sat, 12 Dec 2020 17:56:16 +0000
+Subject: tests: Fix some memory leaks
+
+This is enough to make many of the tests pass under gcc's
+AddressSanitizer. pixbuf-randomly-modified still fails when it cannot
+allocate more memory, and pixbuf-fail fails with memory allocation
+errors unless run with ASAN_OPTIONS=allocator_may_return_null=1.
+
+Signed-off-by: Simon McVittie <smcv@debian.org>
+Forwarded: https://gitlab.gnome.org/GNOME/gdk-pixbuf/-/merge_requests/96
+Applied-upstream: 2.43.0, commit:808cad30f81bd98e7416f52a8a9337d088bd48eb
+---
+ tests/test-common.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/tests/test-common.c b/tests/test-common.c
+index 8ce15dd..27af942 100644
+--- a/tests/test-common.c
++++ b/tests/test-common.c
+@@ -109,7 +109,7 @@ find_format (const gchar *filename, gchar **found_format)
+             }
+         }
+ 
+-      g_free (extensions);
++      g_strfreev (extensions);
+       if (retval)
+         break;
+     }
+@@ -296,6 +296,8 @@ add_test_for_all_images (const gchar   *prefix,
+       test_path = g_strconcat (prefix, "/", relative_path, NULL);
+       
+       g_test_add_data_func_full (test_path, g_object_ref (file), test_func, g_object_unref);
++      g_free (relative_path);
++      g_free (test_path);
+       return;
+     }
+ 

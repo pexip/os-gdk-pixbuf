@@ -459,7 +459,7 @@ pixbuf_create_from_xpm (const gchar * (*get_buf) (enum buf_op op, gpointer handl
 	GHashTable *color_hash;
 	XPMColor *colors, *color, *fallbackcolor;
 	guchar *pixtmp;
-	GdkPixbuf *pixbuf;
+	GdkPixbuf *pixbuf = NULL;
 	gint rowstride;
 
 	fallbackcolor = NULL;
@@ -498,7 +498,16 @@ pixbuf_create_from_xpm (const gchar * (*get_buf) (enum buf_op op, gpointer handl
 		return NULL;
 
 	}
-	if (cpp <= 0 || cpp >= 32) {
+	/* Check from libXpm's ParsePixels() */
+	if ((h > 0 && w >= UINT_MAX / h) ||
+	    w * h >= UINT_MAX / sizeof(unsigned int)) {
+		g_set_error_literal (error,
+                                     GDK_PIXBUF_ERROR,
+                                     GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
+                                     _("Invalid XPM header"));
+		return NULL;
+	}
+	if (cpp <= 0 || cpp >= 32 || w >= G_MAXINT / cpp) {
                 g_set_error_literal (error,
                                      GDK_PIXBUF_ERROR,
                                      GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
@@ -547,10 +556,7 @@ pixbuf_create_from_xpm (const gchar * (*get_buf) (enum buf_op op, gpointer handl
                                              GDK_PIXBUF_ERROR,
                                              GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
                                              _("Cannot read XPM colormap"));
-			g_hash_table_destroy (color_hash);
-			g_free (name_buf);
-			g_free (colors);
-			return NULL;
+                        goto out;
 		}
 
 		color = &colors[cnt];
@@ -585,10 +591,7 @@ pixbuf_create_from_xpm (const gchar * (*get_buf) (enum buf_op op, gpointer handl
                                      GDK_PIXBUF_ERROR,
                                      GDK_PIXBUF_ERROR_INSUFFICIENT_MEMORY,
                                      _("Cannot allocate memory for loading XPM image"));
-		g_hash_table_destroy (color_hash);
-		g_free (colors);
-		g_free (name_buf);
-		return NULL;
+                goto out;
 	}
 
 	rowstride = gdk_pixbuf_get_rowstride (pixbuf);
@@ -599,8 +602,14 @@ pixbuf_create_from_xpm (const gchar * (*get_buf) (enum buf_op op, gpointer handl
 		pixtmp = gdk_pixbuf_get_pixels (pixbuf) + ycnt * rowstride;
 
 		buffer = (*get_buf) (op_body, handle);
-		if ((!buffer) || (strlen (buffer) < wbytes))
-			continue;
+		if ((!buffer) || (strlen (buffer) < wbytes)) {
+			/* Advertised width doesn't match pixels */
+			g_set_error_literal (error,
+					     GDK_PIXBUF_ERROR,
+					     GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
+					     _("Dimensions do not match data"));
+			goto out;
+		}
 
 		for (n = 0, xcnt = 0; n < wbytes; n += cpp, xcnt++) {
 			strncpy (pixel_str, &buffer[n], cpp);
@@ -637,6 +646,14 @@ pixbuf_create_from_xpm (const gchar * (*get_buf) (enum buf_op op, gpointer handl
 	}
 
 	return pixbuf;
+
+out:
+	g_hash_table_destroy (color_hash);
+	g_free (colors);
+	g_free (name_buf);
+
+	g_clear_object (&pixbuf);
+	return NULL;
 }
 
 /* Shared library entry point for file loading */
@@ -681,8 +698,8 @@ gdk_pixbuf__xpm_image_load_xpm_data (const gchar **data)
 typedef struct _XPMContext XPMContext;
 struct _XPMContext
 {
-       GdkPixbufModulePreparedFunc prepare_func;
-       GdkPixbufModuleUpdatedFunc update_func;
+       GdkPixbufModulePreparedFunc prepared_func;
+       GdkPixbufModuleUpdatedFunc updated_func;
        gpointer user_data;
 
        gchar *tempname;
@@ -698,17 +715,21 @@ struct _XPMContext
  */
 static gpointer
 gdk_pixbuf__xpm_image_begin_load (GdkPixbufModuleSizeFunc size_func,
-                                  GdkPixbufModulePreparedFunc prepare_func,
-                                  GdkPixbufModuleUpdatedFunc update_func,
+                                  GdkPixbufModulePreparedFunc prepared_func,
+                                  GdkPixbufModuleUpdatedFunc updated_func,
                                   gpointer user_data,
                                   GError **error)
 {
        XPMContext *context;
        gint fd;
 
+       g_assert (size_func != NULL);
+       g_assert (prepared_func != NULL);
+       g_assert (updated_func != NULL);
+
        context = g_new (XPMContext, 1);
-       context->prepare_func = prepare_func;
-       context->update_func = update_func;
+       context->prepared_func = prepared_func;
+       context->updated_func = updated_func;
        context->user_data = user_data;
        context->all_okay = TRUE;
        fd = g_file_open_tmp ("gdkpixbuf-xpm-tmp.XXXXXX", &context->tempname,
@@ -744,16 +765,14 @@ gdk_pixbuf__xpm_image_stop_load (gpointer data,
                pixbuf = gdk_pixbuf__xpm_image_load (context->file, error);
 
                if (pixbuf != NULL) {
-		       if (context->prepare_func)
-			       (* context->prepare_func) (pixbuf,
-							  NULL,
-							  context->user_data);
-		       if (context->update_func)
-			       (* context->update_func) (pixbuf,
-							 0, 0,
-							 gdk_pixbuf_get_width (pixbuf),
-							 gdk_pixbuf_get_height (pixbuf),
-							 context->user_data);
+		       (* context->prepared_func) (pixbuf,
+						   NULL,
+						   context->user_data);
+		       (* context->updated_func) (pixbuf,
+						  0, 0,
+						  gdk_pixbuf_get_width (pixbuf),
+						  gdk_pixbuf_get_height (pixbuf),
+						  context->user_data);
                        g_object_unref (pixbuf);
 
                        retval = TRUE;

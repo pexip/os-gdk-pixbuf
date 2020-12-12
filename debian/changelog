@@ -1,3 +1,185 @@
+gdk-pixbuf (2.42.2+dfsg-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream release, without the Xlib API
+    - Fix infinite loop on invalid LZW codes in the GIF loader
+      (Closes: #977166, CVE-2020-29385)
+  * d/patches: Update to upstream 2.42.2-6-g89a4cedc
+    - Make enum GType registration thread-safe
+    - Fix memory leaks in test code
+    - Update Romanian translation
+  * d/rules: Update Meson parameter names
+  * Update versioned build-dependencies
+  * d/patches: Change how the test for GNOME#753605 is avoided.
+    Instead of deleting the code, which will cause merge conflicts on new
+    upstream versions, just skip the test if the non-free file is missing.
+  * Stop deleting .la files.
+    This package no longer uses libtool, so there are none.
+  * d/rules: Don't chmod a file that is no longer shipped
+  * Don't try to remove non-determinism from test data.
+    Some of the images included with the tests are deliberately malformed.
+  * d/patches: Add proposed patches to run all the tests, and make
+    them pass
+  * d/copyright: Remove information about contrib/, which was removed.
+    The former contrib directory from this source package has moved to
+    the gdk-pixbuf-xlib source package.
+
+ -- Simon McVittie <smcv@debian.org>  Sat, 12 Dec 2020 22:57:45 +0000
+
+gdk-pixbuf (2.40.0+dfsg-10) unstable; urgency=medium
+
+  * Team upload
+  * Release to unstable, without the Xlib API which is now provided by
+    src:gdk-pixbuf-xlib (Closes: #974870)
+
+ -- Simon McVittie <smcv@debian.org>  Sun, 06 Dec 2020 13:21:23 +0000
+
+gdk-pixbuf (2.40.0+dfsg-9) experimental; urgency=medium
+
+  * Team upload
+  * Branch for experimental again
+  * Drop gdk-pixbuf-xlib binary packages.
+    These will be taken over by a new src:gdk-pixbuf-xlib binary package
+    when it gets through NEW.
+
+ -- Simon McVittie <smcv@debian.org>  Sat, 28 Nov 2020 15:27:13 +0000
+
+gdk-pixbuf (2.40.0+dfsg-8) unstable; urgency=medium
+
+  * Team upload
+  * Generate shlibs dependencies without a transitional alternative.
+    The libgdk-pixbuf-2.0-0 and libgdk-pixbuf-xlib-2.0-0 packages are now
+    available in testing, so we don't need an alternative dependency on
+    libgdk-pixbuf2.0-0 for a smooth transition.
+    This avoids an apparently-circular dependency between
+    libgdk-pixbuf-xlib-2.0-0 and the transitional libgdk-pixbuf2.0-0.
+    (Closes: #975904)
+  * Standards-Version: 4.5.1 (no changes required)
+  * Don't install tests/test-images/fail/file3.jp2 as executable.
+    It isn't an executable or script.
+
+ -- Simon McVittie <smcv@debian.org>  Sat, 28 Nov 2020 13:32:25 +0000
+
+gdk-pixbuf (2.40.0+dfsg-7) unstable; urgency=medium
+
+  * Team upload
+  * Release to unstable
+
+ -- Simon McVittie <smcv@debian.org>  Sun, 22 Nov 2020 15:45:56 +0000
+
+gdk-pixbuf (2.40.0+dfsg-6) experimental; urgency=medium
+
+  * Team upload
+  * Branch for experimental
+  * Split main library away from Xlib integration library (see #974870).
+    The Xlib integration library has been removed upstream in 2.41.x,
+    and moved to a separate, deprecated source repository.
+    To facilitate a transition to separate source packages, split the binary
+    packages built by this source package, in the same style as the split
+    that was done in Pango 1.32.5-2:
+    - libgdk-pixbuf2.0-0:
+      + libgdk_pixbuf-2.0.so.0 -> libgdk-pixbuf-2.0-0
+      + libgdk_pixbuf_xlib-2.0.so.0 -> libgdk-pixbuf-xlib-2.0-0
+    - libgdk-pixbuf2.0-dev:
+      + gdk-pixbuf-2.0.pc, <gdk-pixbuf/gdk-pixbuf.h>
+        -> libgdk-pixbuf-2.0-dev
+      + deprecated <gdk-pixbuf/gdk-pixdata.h> -> libgdk-pixbuf-2.0-dev
+      + gdk-pixbuf-xlib-2.0.pc, <gdk-pixbuf-xlib/gdk-pixbuf-xlib.h>
+        -> libgdk-pixbuf-xlib-2.0-dev
+    with transitional packages to help with the upgrade path.
+    The -bin, -common and -doc packages remain as they were.
+  * Packages that only require gdk-pixbuf-2.0.pc and
+    <gdk-pixbuf/gdk-pixbuf.h> should now build-depend on
+    libgdk-pixbuf-2.0-dev | libgdk-pixbuf2.0-dev.
+  * Packages that require gdk-pixbuf-xlib-2.0.pc and
+    <gdk-pixbuf-xlib/gdk-pixbuf-xlib.h> should now build-depend on
+    libgdk-pixbuf-xlib-2.0-dev | libgdk-pixbuf2.0-dev.
+  * The above change incidentally also drops the libX11 dependency
+    from the main library (Closes: #824502)
+  * d/rules: Trim trailing whitespace
+  * d/control.in: Use secure URI in Homepage field
+  * d/upstream/metadata: Add
+  * d/rules, d/p/tests-Mark-pixbuf-randomly-modified-as-flaky.patch:
+    Don't run pixbuf-randomly-modified test at build time.
+    This is basically a crude fuzzer. It isn't really suitable for
+    build-time acceptance testing, since it frequently produces images for
+    which gdk-pixbuf will try to allocate more memory than is available,
+    but if it does, it isn't straightforward to capture the failing image
+    from an autobuilder that only records build logs. (Closes: #942124)
+  * Mark pixbuf-randomly-modified test as flaky when run as autopkgtest too
+
+ -- Simon McVittie <smcv@debian.org>  Tue, 17 Nov 2020 11:13:22 +0000
+
+gdk-pixbuf (2.40.0+dfsg-5) unstable; urgency=medium
+
+  * rules: Don't mangle PNGs in gdk-pixbuf-tests (for Ubuntu)
+
+ -- Iain Lane <laney@debian.org>  Mon, 01 Jun 2020 17:05:16 +0100
+
+gdk-pixbuf (2.40.0+dfsg-4) unstable; urgency=medium
+
+  * Do not rebuild the documentation when it's not necessary
+  * debian/control.in: Bump Standards-Version to 4.5.0
+  * Ship the installed tests and run them in the dep8 tests
+
+ -- Laurent Bigonville <bigon@debian.org>  Wed, 08 Apr 2020 14:34:38 +0200
+
+gdk-pixbuf (2.40.0+dfsg-3) unstable; urgency=medium
+
+  * debian/rules: Make the tests non-fatal on kfreebsd-amd64
+
+ -- Laurent Bigonville <bigon@debian.org>  Sun, 08 Mar 2020 18:35:39 +0100
+
+gdk-pixbuf (2.40.0+dfsg-2) unstable; urgency=medium
+
+  * Team upload
+  * d/tests/build: Mark as superficial
+  * d/tests/build: Make autopkgtest cross-test-friendly.
+    Use an appropriate cross-compiler and cross-pkg-config when using
+    proposed autopkgtest cross-testing support.
+    Thanks to Steve Langasek. (Closes: #946374)
+  * d/tests/build: Fail on references to unset variables
+  * d/tests/build: Fix shellcheck warnings
+  * Bump Standards-Version to 4.4.1
+
+ -- Simon McVittie <smcv@debian.org>  Thu, 26 Dec 2019 16:33:27 +0000
+
+gdk-pixbuf (2.40.0+dfsg-1) unstable; urgency=medium
+
+  * New upstream release
+
+  [ Simon McVittie ]
+  * Re-import upstream source code with non-free test data excluded
+  * d/gbp.conf: Disable automatic merging of upstream VCS tags.
+    This doesn't work well with +dfsg versions.
+
+ -- Sebastien Bacher <seb128@ubuntu.com>  Thu, 10 Oct 2019 17:38:01 +0200
+
+gdk-pixbuf (2.39.2-3) experimental; urgency=medium
+
+  * debian/rules:
+    - use dh_missing --fail-missing
+
+ -- Sebastien Bacher <seb128@ubuntu.com>  Wed, 14 Aug 2019 21:40:38 +0200
+
+gdk-pixbuf (2.39.2-2) experimental; urgency=medium
+
+  * Really remove debian/compat from the upload...
+
+ -- Sebastien Bacher <seb128@ubuntu.com>  Wed, 14 Aug 2019 20:09:49 +0200
+
+gdk-pixbuf (2.39.2-1) experimental; urgency=medium
+
+  * New upstream release
+    - Render GIF frames on demand
+  * debian/control.in, debian/compat:
+    - update to debhelper12
+    - update the Standards-version to 4.4.0.1
+  * debian/libgdk-pixbuf2.0-0.symbols:
+    - new version update
+
+ -- Sebastien Bacher <seb128@ubuntu.com>  Wed, 14 Aug 2019 16:05:13 +0200
+
 gdk-pixbuf (2.38.1+dfsg-1) unstable; urgency=medium
 
   * New upstream release
