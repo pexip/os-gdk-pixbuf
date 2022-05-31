@@ -28,7 +28,7 @@ Standards-Version: 4.3.0
 Homepage: http://www.gtk.org/
 Vcs-Git: https://salsa.debian.org/gnome-team/gdk-pixbuf.git
 Vcs-Browser: https://salsa.debian.org/gnome-team/gdk-pixbuf
-XS-Pexip-Upstream: http://ftp.debian.org/debian/ buster
+XS-Pexip-Upstream: http://deb.debian.org/debian/ bullseye
 
 Package: libgdk-pixbuf2.0-0
 Architecture: any
