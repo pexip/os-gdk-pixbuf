@@ -4,7 +4,11 @@ configure_file(input: 'version.xml.in',
                output: 'version.xml',
                configuration: version_xml)
 
-glib_prefix = dependency('glib-2.0').get_pkgconfig_variable('prefix')
+if gobject_dep.type_name() == 'pkgconfig'
+  glib_prefix = gobject_dep.get_pkgconfig_variable('prefix')
+else
+  glib_prefix = get_option('prefix')
+endif
 glib_docpath = join_paths(glib_prefix, 'share', 'gtk-doc', 'html')
 docpath = join_paths(gdk_pixbuf_datadir, 'gtk-doc', 'html')
 
@@ -17,7 +21,6 @@ private_headers = [
   'gdk-pixbuf-marshal.h',
   'gdk-pixbuf-private.h',
   'gdk-pixbuf-scaled-anim.h',
-  'gdk-pixbuf-xlib-private.h',
   'io-ani-animation.h',
   'io-gdip-animation.h',
   'io-gdip-native.h',
@@ -26,19 +29,17 @@ private_headers = [
   'io-gif-animation.h',
   'xpm-color-table.h',
   'test-images.h',
+  'lzw.h',
 ]
 
-if not get_option('x11')
-  private_headers += 'contrib'
+if get_option('docs')
+  warning('The "docs" build option is deprecated; please use "gtk_doc=true"')
 endif
 
-if get_option('docs')
+if get_option('gtk_doc') or get_option('docs')
   gnome.gtkdoc('gdk-pixbuf',
                main_xml: 'gdk-pixbuf.xml',
-               src_dir: [
-                 gdk_pixbuf_inc,
-                 gdkpixbuf_xlib_inc,
-               ],
+               src_dir: [ gdk_pixbuf_inc ],
                dependencies: gdkpixbuf_dep,
                gobject_typesfile: 'gdk-pixbuf.types',
                scan_args: [

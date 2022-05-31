@@ -17,6 +17,7 @@
  * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#define GLIB_DISABLE_DEPRECATION_WARNINGS
 #include "gdk-pixbuf/gdk-pixbuf.h"
 #include "test-common.h"
 #include <string.h>
@@ -78,6 +79,12 @@ run_gif_test (gconstpointer data)
   int i;
   GError *error = NULL;
 
+  if (!format_supported ("gif"))
+    {
+      g_test_skip ("GIF format not supported");
+      return;
+    }
+
   config_file = g_key_file_new ();
   g_key_file_set_list_separator (config_file, ',');
   config_filename = g_strdup_printf ("%s.conf", name);
@@ -122,7 +129,7 @@ run_gif_test (gconstpointer data)
     {
       const gchar *frame = frames[i];
       GdkPixbuf *pixbuf;
-      gint delay_time, expected_delay_time = 0;
+      gint delay_time, expected_delay_time = 100;
       gchar *pixels_filename;
       GFile *pixels_file;
       GBytes *expected_pixels, *pixels;
@@ -139,18 +146,6 @@ run_gif_test (gconstpointer data)
       if (g_key_file_has_key (config_file, frame, "delay", &error))
         expected_delay_time = g_key_file_get_integer (config_file, frame, "delay", &error) * 10;
       g_assert_no_error (error);
-
-      /* gdk-pixbuf uses 20ms minimum delay when no delay specified */
-      if (expected_delay_time < 20)
-        expected_delay_time = 20;
-
-      /* gdk-pixbuf uses 100ms minimum when using Graphics Control Extension */
-      if (strcmp (name, "transparent") == 0 ||
-          strcmp (name, "invalid-transparent") == 0 ||
-          strcmp (name, "disabled-transparent") == 0 ||
-          strcmp (name, "animation-zero-delays") == 0)
-        if (expected_delay_time < 100)
-          expected_delay_time = 100;
 
       g_assert_cmpint (delay_time, ==, expected_delay_time);
 
@@ -169,10 +164,10 @@ run_gif_test (gconstpointer data)
 
       g_assert_cmpint (gdk_pixbuf_get_colorspace (pixbuf), ==, GDK_COLORSPACE_RGB);
       g_assert_cmpint (gdk_pixbuf_get_n_channels (pixbuf), ==, 4);
-      g_assert (gdk_pixbuf_get_has_alpha (pixbuf));
+      g_assert_true (gdk_pixbuf_get_has_alpha (pixbuf));
       g_assert_cmpint (gdk_pixbuf_get_rowstride (pixbuf), ==, width * 4);
       pixels = g_bytes_new_static (gdk_pixbuf_read_pixels (pixbuf), gdk_pixbuf_get_byte_length (pixbuf));
-      g_assert (pixels_match (pixels, expected_pixels));
+      g_assert_true (pixels_match (pixels, expected_pixels));
       g_clear_pointer (&pixels, g_bytes_unref);
       g_clear_pointer (&expected_pixels, g_bytes_unref);
     }

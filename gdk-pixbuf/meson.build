@@ -10,7 +10,7 @@ subdir('pixops')
 loaders = [
   [ 'png', [ 'io-png.c' ], enabled_loaders.contains('png') ],
   [ 'bmp', [ 'io-bmp.c' ], not native_windows_loaders ],
-  [ 'gif', [ 'io-gif.c', 'io-gif-animation.c' ], not native_windows_loaders ],
+  [ 'gif', [ 'io-gif.c', 'io-gif-animation.c', 'lzw.c' ], not native_windows_loaders ],
   [ 'ico', [ 'io-ico.c' ], not native_windows_loaders ],
   [ 'ani', [ 'io-ani.c', 'io-ani-animation.c' ] ],
   [ 'jpeg', [ 'io-jpeg.c' ], enabled_loaders.contains('jpeg') ],
@@ -20,7 +20,6 @@ loaders = [
   [ 'xbm', [ 'io-xbm.c' ] ],
   [ 'tga', [ 'io-tga.c', 'gdk-pixbuf-buffer-queue.c' ] ],
   [ 'icns', [ 'io-icns.c' ] ],
-  [ 'jasper', [ 'io-jasper.c' ], enabled_loaders.contains('jasper'), jasper_extra_cflags ],
   [ 'qtif', [ 'io-qtif.c' ] ]
 ]
 
@@ -52,7 +51,6 @@ gdkpixbuf_features_conf.set('LT_CURRENT_MINUS_AGE', current_minus_age)
 gdk_pixbuf_features_h = configure_file(input: 'gdk-pixbuf-features.h.in',
                                        output: 'gdk-pixbuf-features.h',
                                        configuration: gdkpixbuf_features_conf,
-                                       install: true,
                                        install_dir: join_paths(gdk_pixbuf_includedir, gdk_pixbuf_api_path))
 
 gdkpixbuf_headers = [
@@ -170,6 +168,7 @@ gdkpixbuf = library('gdk_pixbuf-2.0',
                     ],
                     soversion: soversion,
                     version: libversion,
+		    darwin_versions: darwin_versions,
                     c_args: common_cflags + gdk_pixbuf_cflags + included_loaders_cflags,
                     link_args: common_ldflags,
                     include_directories: [
@@ -182,7 +181,9 @@ gdkpixbuf = library('gdk_pixbuf-2.0',
                     ],
                     install: true)
 
-build_gir = get_option('gir')
+gir = find_program('g-ir-scanner', required : get_option('introspection'))
+build_gir = gir.found() and (not meson.is_cross_build() or get_option('introspection').enabled())
+
 if build_gir
   gir_args = [
     '--quiet',

@@ -176,16 +176,18 @@ format_check (GdkPixbufModule *module, guchar *buffer, int size)
 
 G_LOCK_DEFINE_STATIC (init_lock);
 
+static gboolean file_formats_inited;
 static GSList *file_formats = NULL;
 
-static void gdk_pixbuf_io_init (void);
+static gboolean gdk_pixbuf_io_init (void);
 
 static GSList *
 get_file_formats (void)
 {
         G_LOCK (init_lock);
-        if (file_formats == NULL)
-                gdk_pixbuf_io_init ();
+        if (file_formats == NULL ||
+            !file_formats_inited)
+                file_formats_inited = gdk_pixbuf_io_init ();
         G_UNLOCK (init_lock);
         
         return file_formats;
@@ -383,8 +385,9 @@ static gboolean
 gdk_pixbuf_load_module_unlocked (GdkPixbufModule *image_module,
                                  GError         **error);
 
-static void 
-gdk_pixbuf_io_init (void)
+static gboolean
+gdk_pixbuf_io_init_modules (const char  *filename,
+                            GError     **error)
 {
 #ifdef USE_GMODULE
         GIOChannel *channel;
@@ -393,97 +396,29 @@ gdk_pixbuf_io_init (void)
         GString *tmp_buf = g_string_new (NULL);
         gboolean have_error = FALSE;
         GdkPixbufModule *module = NULL;
-        gchar *filename = gdk_pixbuf_get_module_file ();
-        int flags;
+        int flags = 0;
         int n_patterns = 0;
         GdkPixbufModulePattern *pattern;
-        GError *error = NULL;
-#endif
+        GError *local_error = NULL;
+        guint num_formats;
 
-#define load_one_builtin_module(format)                                 G_STMT_START { \
-        GdkPixbufModule *__builtin_module = g_new0 (GdkPixbufModule, 1);               \
-        __builtin_module->module_name = #format;                                       \
-        if (gdk_pixbuf_load_module_unlocked (__builtin_module, NULL))                  \
-                file_formats = g_slist_prepend (file_formats, __builtin_module);       \
-        else                                                                           \
-                g_free (__builtin_module);                              } G_STMT_END
-
-#ifdef INCLUDE_ani
-        load_one_builtin_module (ani);
-#endif
-#ifdef INCLUDE_png
-        load_one_builtin_module (png);
-#endif
-#ifdef INCLUDE_bmp
-        load_one_builtin_module (bmp);
-#endif
-#ifdef INCLUDE_gif
-        load_one_builtin_module (gif);
-#endif
-#ifdef INCLUDE_ico
-        load_one_builtin_module (ico);
-#endif
-#ifdef INCLUDE_jpeg
-        load_one_builtin_module (jpeg);
-#endif
-#ifdef INCLUDE_pnm
-        load_one_builtin_module (pnm);
-#endif
-#ifdef INCLUDE_tiff
-        load_one_builtin_module (tiff);
-#endif
-#ifdef INCLUDE_xpm
-        load_one_builtin_module (xpm);
-#endif
-#ifdef INCLUDE_xbm
-        load_one_builtin_module (xbm);
-#endif
-#ifdef INCLUDE_tga
-        load_one_builtin_module (tga);
-#endif
-#ifdef INCLUDE_icns
-        load_one_builtin_module (icns);
-#endif
-#ifdef INCLUDE_jasper
-        load_one_builtin_module (jasper);
-#endif
-#ifdef INCLUDE_qtif
-        load_one_builtin_module (qtif);
-#endif
-#ifdef INCLUDE_gdiplus
-        /* We don't bother having the GDI+ loaders individually selectable
-         * for building in or not.
-         */
-        load_one_builtin_module (ico);
-        load_one_builtin_module (wmf);
-        load_one_builtin_module (emf);
-        load_one_builtin_module (bmp);
-        load_one_builtin_module (gif);
-        load_one_builtin_module (jpeg);
-        load_one_builtin_module (tiff);
-#endif
-#ifdef INCLUDE_gdip_png
-        /* Except the gdip-png loader which normally isn't built at all even */
-        load_one_builtin_module (png);
-#endif
-
-#undef load_one_builtin_module
-
-#ifdef USE_GMODULE
-        channel = g_io_channel_new_file (filename, "r",  &error);
+        channel = g_io_channel_new_file (filename, "r",  &local_error);
         if (!channel) {
-                /* Don't bother warning if we have some built-in loaders */
-                if (file_formats == NULL || file_formats->next == NULL)
-                        g_warning ("Cannot open pixbuf loader module file '%s': %s\n\n"
-                                   "This likely means that your installation is broken.\n"
-                                   "Try running the command\n"
-                                   "  gdk-pixbuf-query-loaders > %s\n"
-                                   "to make things work again for the time being.",
-                                   filename, error->message, filename);
+                g_set_error (error,
+                             G_IO_ERROR,
+                             G_IO_ERROR_INVALID_ARGUMENT,
+                             "Cannot open pixbuf loader module file '%s': %s\n\n"
+                             "This likely means that your installation is broken.\n"
+                             "Try running the command\n"
+                             "  gdk-pixbuf-query-loaders > %s\n"
+                             "to make things work again for the time being.",
+                             filename, local_error->message, filename);
+                g_clear_error (&local_error);
                 g_string_free (tmp_buf, TRUE);
-                g_free (filename);
-                return;
+                return FALSE;
         }
+
+        num_formats = g_slist_length (file_formats);
         
         while (!have_error && g_io_channel_read_line (channel, &line_buf, NULL, &term, NULL) == G_IO_STATUS_NORMAL) {
                 const char *p;
@@ -493,8 +428,7 @@ gdk_pixbuf_io_init (void)
                 line_buf[term] = 0;
 
                 if (!skip_space (&p)) {
-                                /* Blank line marking the end of a module
-                                 */
+                        /* Blank line marking the end of a module */
                         if (module && *p != '#') {
                                 file_formats = g_slist_prepend (file_formats, module);
                                 module = NULL;
@@ -507,8 +441,7 @@ gdk_pixbuf_io_init (void)
                         goto next_line;
                 
                 if (!module) {
-                                /* Read a module location
-                                 */
+                        /* Read a module location */
                         module = g_new0 (GdkPixbufModule, 1);
                         n_patterns = 0;
                         
@@ -529,6 +462,7 @@ gdk_pixbuf_io_init (void)
                         module->info->name =  g_strdup (tmp_buf->str);
                         module->module_name = module->info->name;
 
+                        flags = 0;
                         if (!scan_int (&p, &flags)) {
                                 g_warning ("Error parsing loader info in '%s'\n  %s", 
                                            filename, line_buf);
@@ -619,10 +553,136 @@ gdk_pixbuf_io_init (void)
         }
         g_string_free (tmp_buf, TRUE);
         g_io_channel_unref (channel);
-        g_free (filename);
+
+        if (g_slist_length (file_formats) <= num_formats) {
+                g_set_error (error,
+                             G_IO_ERROR,
+                             G_IO_ERROR_NOT_INITIALIZED,
+                             "No new GdkPixbufModule loaded from '%s'",
+                             filename);
+                return FALSE;
+        }
 #endif
+        return TRUE;
 }
 
+/**
+ * gdk_pixbuf_init_modules:
+ * @path: Path to directory where the loaders.cache is installed
+ * @error: return location for a #GError
+ *
+ * Initalizes the gdk-pixbuf loader modules referenced by the loaders.cache
+ * file present inside that directory.
+ *
+ * This is to be used by applications that want to ship certain loaders
+ * in a different location from the system ones.
+ *
+ * This is needed when the OS or runtime ships a minimal number of loaders
+ * so as to reduce the potential attack surface of carefully crafted image
+ * files, especially for uncommon file types. Applications that require
+ * broader image file types coverage, such as image viewers, would be
+ * expected to ship the gdk-pixbuf modules in a separate location, bundled
+ * with the application in a separate directory from the OS or runtime-
+ * provided modules.
+ *
+ * Since: 2.40
+ */
+gboolean
+gdk_pixbuf_init_modules (const char  *path,
+			 GError     **error)
+{
+	char *filename;
+	gboolean ret;
+
+	g_return_val_if_fail (path != NULL, FALSE);
+	filename = g_build_filename (path, "loaders.cache", NULL);
+	ret = gdk_pixbuf_io_init_modules (filename, error);
+	g_free (filename);
+	return ret;
+}
+
+static void
+gdk_pixbuf_io_init_builtin (void)
+{
+#define load_one_builtin_module(format)                                 G_STMT_START { \
+        GdkPixbufModule *__builtin_module = g_new0 (GdkPixbufModule, 1);               \
+        __builtin_module->module_name = #format;                                       \
+        if (gdk_pixbuf_load_module_unlocked (__builtin_module, NULL))                  \
+                file_formats = g_slist_prepend (file_formats, __builtin_module);       \
+        else                                                                           \
+                g_free (__builtin_module);                              } G_STMT_END
+
+#ifdef INCLUDE_ani
+        load_one_builtin_module (ani);
+#endif
+#ifdef INCLUDE_png
+        load_one_builtin_module (png);
+#endif
+#ifdef INCLUDE_bmp
+        load_one_builtin_module (bmp);
+#endif
+#ifdef INCLUDE_gif
+        load_one_builtin_module (gif);
+#endif
+#ifdef INCLUDE_ico
+        load_one_builtin_module (ico);
+#endif
+#ifdef INCLUDE_jpeg
+        load_one_builtin_module (jpeg);
+#endif
+#ifdef INCLUDE_pnm
+        load_one_builtin_module (pnm);
+#endif
+#ifdef INCLUDE_tiff
+        load_one_builtin_module (tiff);
+#endif
+#ifdef INCLUDE_xpm
+        load_one_builtin_module (xpm);
+#endif
+#ifdef INCLUDE_xbm
+        load_one_builtin_module (xbm);
+#endif
+#ifdef INCLUDE_tga
+        load_one_builtin_module (tga);
+#endif
+#ifdef INCLUDE_icns
+        load_one_builtin_module (icns);
+#endif
+#ifdef INCLUDE_qtif
+        load_one_builtin_module (qtif);
+#endif
+#ifdef INCLUDE_gdiplus
+        /* We don't bother having the GDI+ loaders individually selectable
+         * for building in or not.
+         */
+        load_one_builtin_module (ico);
+        load_one_builtin_module (wmf);
+        load_one_builtin_module (emf);
+        load_one_builtin_module (bmp);
+        load_one_builtin_module (gif);
+        load_one_builtin_module (jpeg);
+        load_one_builtin_module (tiff);
+#endif
+#ifdef INCLUDE_gdip_png
+        /* Except the gdip-png loader which normally isn't built at all even */
+        load_one_builtin_module (png);
+#endif
+
+#undef load_one_builtin_module
+}
+
+static gboolean
+gdk_pixbuf_io_init (void)
+{
+	char *module_file;
+	gboolean ret;
+
+	gdk_pixbuf_io_init_builtin ();
+	module_file = gdk_pixbuf_get_module_file ();
+	ret = gdk_pixbuf_io_init_modules (module_file, NULL);
+	g_free (module_file);
+	return ret;
+}
 
 #define module(type) \
   extern void _gdk_pixbuf__##type##_fill_info   (GdkPixbufFormat *info);   \
@@ -640,7 +700,6 @@ module (bmp);
 module (xbm);
 module (tga);
 module (icns);
-module (jasper);
 module (qtif);
 module (gdip_ico);
 module (gdip_wmf);
@@ -720,9 +779,6 @@ gdk_pixbuf_load_module_unlocked (GdkPixbufModule *image_module,
 #endif
 #ifdef INCLUDE_icns
         try_module (icns,icns);
-#endif
-#ifdef INCLUDE_jasper
-        try_module (jasper,jasper);
 #endif
 #ifdef INCLUDE_qtif
         try_module (qtif,qtif);
@@ -943,6 +999,13 @@ _gdk_pixbuf_get_module_for_file (FILE *f, const gchar *filename, GError **error)
 }
 
 static void
+noop_size_notify (gint     *width,
+		  gint     *height,
+		  gpointer  data)
+{
+}
+
+static void
 prepared_notify (GdkPixbuf *pixbuf, 
                  GdkPixbufAnimation *anim, 
                  gpointer user_data)
@@ -952,13 +1015,23 @@ prepared_notify (GdkPixbuf *pixbuf,
         *((GdkPixbuf **)user_data) = pixbuf;
 }
 
+static void
+noop_updated_notify (GdkPixbuf *pixbuf,
+		     int        x,
+		     int        y,
+		     int        width,
+		     int        height,
+		     gpointer   user_data)
+{
+}
+
 static GdkPixbuf *
 generic_load_incrementally (GdkPixbufModule *module, FILE *f, GError **error)
 {
         GdkPixbuf *pixbuf = NULL;
 	gpointer context;
 
-	context = module->begin_load (NULL, prepared_notify, NULL, &pixbuf, error);
+	context = module->begin_load (noop_size_notify, prepared_notify, noop_updated_notify, &pixbuf, error);
         
 	if (!context)
 		goto out;
