@@ -1,14 +1,14 @@
 project('gdk-pixbuf', 'c',
-        version: '2.38.1',
-        license: 'LGPLv2.1+',
+        version: '2.42.2',
+        license: 'LGPL-2.1-or-later',
         default_options: [
           'buildtype=debugoptimized',
           'warning_level=1',
           'c_std=c99',
         ],
-        meson_version: '>= 0.46.0')
+        meson_version: '>= 0.55.3')
 
-add_project_arguments([ '-D_POSIX_C_SOURCE=200809L', '-D_DEFAULT_SOURCE', '-D_XOPEN_SOURCE' ], language: 'c')
+add_project_arguments([ '-D_POSIX_C_SOURCE=200809L', '-D_DEFAULT_SOURCE', '-D_XOPEN_SOURCE=700' ], language: 'c')
 
 cc = meson.get_compiler('c')
 host_system = host_machine.system()
@@ -56,8 +56,15 @@ gdk_pixbuf_libexecdir = join_paths(gdk_pixbuf_prefix, get_option('libexecdir'))
 gdk_pixbuf_loaderdir = join_paths(gdk_pixbuf_libdir, 'gdk-pixbuf-@0@/@1@/loaders'.format(gdk_pixbuf_api_version, gdk_pixbuf_binary_version))
 
 # Dependencies
-glib_req_version = '>= 2.38.0'
-gio_dep = dependency('gio-2.0', version: glib_req_version)
+glib_req_version = '>= 2.56.0'
+glib_dep = dependency('glib-2.0', version: glib_req_version,
+                      fallback : ['glib', 'libglib_dep'])
+gobject_dep = dependency('gobject-2.0', version: glib_req_version,
+                         fallback : ['glib', 'libgobject_dep'])
+gmodule_dep = dependency('gmodule-no-export-2.0', version: glib_req_version,
+                         fallback : ['glib', 'libgmodule_dep'])
+gio_dep = dependency('gio-2.0', version: glib_req_version,
+                     fallback : ['glib', 'libgio_dep'])
 
 # Configurations
 gdk_pixbuf_conf = configuration_data()
@@ -112,8 +119,8 @@ common_ldflags = []
 if cc.get_id() == 'msvc'
   # For Visual Studio, just force-include msvc_reommended_pragmas.h
   # so that we silence unwanted noise and track potential issues
-  test_cflags = []
-  add_project_arguments([ '-FImsvc_recommended_pragmas.h' ], language: 'c')
+  test_cflags = [ '-FImsvc_recommended_pragmas.h', '-utf-8' ]
+  add_project_arguments(cc.get_supported_arguments(test_cflags), language: 'c')
 elif cc.get_id() == 'gcc' or cc.get_id() == 'clang'
   test_cflags = [
     '-Wpointer-arith',
@@ -179,15 +186,8 @@ if host_machine.system() == 'linux'
 endif
 
 if host_machine.system() == 'darwin'
-  # Maintain compatibility with autotools on macOS
-  common_ldflags += [ '-compatibility_version', darwin_versions[0], '-current_version', darwin_versions[1]]
   gdk_pixbuf_conf.set('OS_DARWIN', 1)
 endif
-
-# Dependencies
-gobject_dep = dependency('gobject-2.0', version: glib_req_version)
-gmodule_dep = dependency('gmodule-no-export-2.0')
-gio_dep = dependency('gio-2.0')
 
 # On non-Windows/macOS systems we always required shared-mime-info and GIO
 # shared_mime_dep = []
@@ -211,10 +211,15 @@ if medialib_dep.found()
   endif
 endif
 
-gdk_pixbuf_deps = [ mathlib_dep, gobject_dep, gmodule_dep, gio_dep, shared_mime_dep, medialib_dep ]
+gdk_pixbuf_deps = [ mathlib_dep, glib_dep, gobject_dep, gmodule_dep, gio_dep,
+                    shared_mime_dep, medialib_dep ]
 
 # Check if we can build shared modules
-build_modules = gmodule_dep.get_pkgconfig_variable('gmodule_supported') == 'true'
+if gmodule_dep.type_name() == 'pkgconfig'
+  build_modules = gmodule_dep.get_pkgconfig_variable('gmodule_supported') == 'true'
+else
+  build_modules = subproject('glib').get_variable('g_module_impl') != '0'
+endif
 gdk_pixbuf_conf.set('USE_GMODULE', build_modules)
 
 # Check which loaders should be built into gdk-pixbuf
@@ -267,6 +272,18 @@ if get_option('png')
           enabled_loaders += 'png'
           loaders_deps += [ png_dep, zlib_dep ]
         endif
+      endif
+    endif
+
+    # Finally, look for the dependency in a fallback subproject if allowed by
+    # the --wrap-mode option. We don't directly call subproject() here because
+    # that will bypass --wrap-mode and cause issues for distro packagers.
+    # See: https://mesonbuild.com/Reference-manual.html#dependency
+    if not png_dep.found()
+      png_dep = dependency('', required: false, fallback: ['libpng', 'png_dep'])
+      if png_dep.found()
+        enabled_loaders += 'png'
+        loaders_deps += png_dep
       endif
     endif
   endif
@@ -330,36 +347,6 @@ if get_option('tiff') and not native_windows_loaders
   endif
 endif
 
-jasper_extra_cflags = []
-
-if get_option('jasper')
-  has_jasper_header = false
-
-  if cc.get_id() == 'msvc'
-    # We must define JAS_WIN_MSVC_BUILD before including jasper/jasper.h on MSVC
-    jasper_msvc_macro = 'JAS_WIN_MSVC_BUILD'
-    has_jasper_header = cc.has_header('jasper/jasper.h', prefix: '#define @0@'.format(jasper_msvc_macro))
-    jasper_extra_cflags = [ '-D@0@'.format(jasper_msvc_macro) ]
-  else
-    has_jasper_header = cc.has_header('jasper/jasper.h')
-  endif
-
-  if has_jasper_header
-    jasper_dep = cc.find_library('jasper', required: false)
-    if not jasper_dep.found()
-      if cc.get_id() == 'msvc'
-        # on MSVC, we need to look for libjasper.lib if jasper.lib is not found,
-        # which corresponds to what libjasper's MSVC projects produce
-        jasper_dep = cc.find_library('libjasper', required: false)
-      endif
-    endif
-    if jasper_dep.found() and cc.has_function('jas_init', dependencies: jasper_dep)
-      enabled_loaders += 'jasper'
-      loaders_deps += jasper_dep
-    endif
-  endif
-endif
-
 # Determine whether we enable application bundle relocation support, and we use
 # this always on Windows
 if host_system == 'windows'
@@ -388,12 +375,6 @@ gnome = import('gnome')
 
 subdir('gdk-pixbuf')
 
-gdkpixbuf_xlib_inc = []
-if get_option('x11')
-  x11_dep = dependency('x11')
-  subdir('contrib/gdk-pixbuf-xlib')
-endif
-
 # i18n
 subdir('po')
 
@@ -403,17 +384,20 @@ if not meson.is_cross_build()
 endif
 
 # Documentation
+build_docs = get_option('gtk_doc') or get_option('docs')
 subdir('docs')
 
 if not meson.is_cross_build()
   # On Visual Studio, we don't normally have a shell interpreter, so use a .bat
   if cc.get_id() == 'msvc'
     meson.add_install_script('build-aux/post-install.bat',
+      gdk_pixbuf_bindir,
       gdk_pixbuf_libdir,
       gdk_pixbuf_binary_version,
     )
   else
     meson.add_install_script('build-aux/post-install.sh',
+      gdk_pixbuf_bindir,
       gdk_pixbuf_libdir,
       gdk_pixbuf_binary_version,
     )
@@ -431,10 +415,9 @@ summary = [
   '',
   '  enabled loaders: @0@'.format(' '.join(enabled_loaders)),
   '',
-  '    documentation: @0@'.format(get_option('docs')),
+  '    documentation: @0@'.format(build_docs),
   '        man pages: @0@'.format(get_option('man')),
-  '    introspection: @0@'.format(get_option('gir')),
-  '              x11: @0@'.format(get_option('x11')),
+  '    introspection: @0@'.format(build_gir),
   '  installed tests: @0@'.format(get_option('installed_tests')),
   '      relocatable: @0@'.format(get_option('relocatable')),
   '',

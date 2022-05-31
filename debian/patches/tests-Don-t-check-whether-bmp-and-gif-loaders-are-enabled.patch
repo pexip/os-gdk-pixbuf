@@ -1,0 +1,51 @@
+From: Simon McVittie <smcv@debian.org>
+Date: Sat, 12 Dec 2020 16:12:59 +0000
+Subject: tests: Don't check whether bmp and gif loaders are enabled
+
+This is conceptually similar to commit 2fd7d21f "tests: Fix GIF tests
+being permanently disabled". One way or another, gdk-pixbuf always
+supports these two formats: on Windows with the native gdiplus loader
+enabled, it covers these two formats; otherwise, format-specific loaders
+are used.
+
+This means we will run the GIF tests, as intended.
+
+Fixes: 7f0b214a "tests: Conditionally build and run tests"
+Signed-off-by: Simon McVittie <smcv@debian.org>
+Forwarded: https://gitlab.gnome.org/GNOME/gdk-pixbuf/-/merge_requests/95
+---
+ tests/meson.build | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
+
+diff --git a/tests/meson.build b/tests/meson.build
+index 4368c6b..ab7ff1e 100644
+--- a/tests/meson.build
++++ b/tests/meson.build
+@@ -1,6 +1,6 @@
+ # Resources contain PNG and BMP files, so we need these two loaders
+ # enabled in order to build them
+-if enabled_loaders.contains('png') and enabled_loaders.contains('bmp')
++if enabled_loaders.contains('png')
+   # Resources; we cannot use gnome.compile_resources() here, because we need to
+   # override the environment in order to use the utilities we just built instead
+   # of the system ones
+@@ -65,7 +65,6 @@ installed_tests = {
+   'pixbuf-construction': { 'suites': ['conform'], },
+   'animation': {
+     'suites': ['format'],
+-    'skip': not enabled_loaders.contains('gif'),
+   },
+   'cve-2015-4491': {
+     'suites': ['security'],
+@@ -107,11 +106,9 @@ installed_tests = {
+   'pixbuf-scale-two-step': { 'suites': ['ops'], },
+   'pixbuf-short-gif-write': {
+     'suites': ['format'],
+-    'skip': not enabled_loaders.contains('gif'),
+   },
+   'pixbuf-gif-circular-table': {
+     'suites': ['format'],
+-    'skip': not enabled_loaders.contains('gif'),
+   },
+   'pixbuf-save': { 'suites': ['io'] },
+   'pixbuf-readonly-to-mutable': { 'suites': ['conform'], },

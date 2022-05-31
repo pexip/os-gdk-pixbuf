@@ -41,6 +41,10 @@ G_BEGIN_DECLS
 
 typedef struct _GdkPixbufFormat GdkPixbufFormat;
 
+GDK_PIXBUF_AVAILABLE_IN_2_40
+gboolean gdk_pixbuf_init_modules (const char  *path,
+                                  GError     **error);
+
 GDK_PIXBUF_AVAILABLE_IN_ALL
 GType gdk_pixbuf_format_get_type (void) G_GNUC_CONST;
 
@@ -246,8 +250,8 @@ struct _GdkPixbufModule {
         /* Incremental loading */
 
         gpointer (* begin_load)     (GdkPixbufModuleSizeFunc size_func,
-                                     GdkPixbufModulePreparedFunc prepare_func,
-                                     GdkPixbufModuleUpdatedFunc update_func,
+                                     GdkPixbufModulePreparedFunc prepared_func,
+                                     GdkPixbufModuleUpdatedFunc updated_func,
                                      gpointer user_data,
                                      GError **error);
         gboolean (* stop_load)      (gpointer context,

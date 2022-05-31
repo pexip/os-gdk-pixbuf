@@ -824,6 +824,10 @@ gdk_pixbuf__pnm_image_begin_load (GdkPixbufModuleSizeFunc size_func,
 {
 	PnmLoaderContext *context;
 	
+	g_assert (size_func != NULL);
+	g_assert (prepared_func != NULL);
+	g_assert (updated_func != NULL);
+
 	context = g_try_malloc (sizeof (PnmLoaderContext));
 	if (!context) {
 		g_set_error_literal (error, GDK_PIXBUF_ERROR, 
@@ -869,6 +873,12 @@ gdk_pixbuf__pnm_image_stop_load (gpointer data,
 	
 	if (context->pixbuf)
 		g_object_unref (context->pixbuf);
+	else {
+		g_set_error_literal (error, GDK_PIXBUF_ERROR,
+				     GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
+				     _("Premature end-of-file encountered"));
+		retval = FALSE;
+	}
 
 #if 0
 	/* We should ignore trailing newlines and we can't
@@ -954,7 +964,7 @@ gdk_pixbuf__pnm_image_load_increment (gpointer data,
 			context->got_header = TRUE;
 		}
 
-		if (context->size_func) {
+		{
 			gint w = context->width;
 			gint h = context->height;
 			(*context->size_func) (&w, &h, context->user_data);
@@ -1015,10 +1025,9 @@ gdk_pixbuf__pnm_image_load_increment (gpointer data,
 			context->rowstride = gdk_pixbuf_get_rowstride (context->pixbuf);
 			
 			/* Notify the client that we are ready to go */
-			if (context->prepared_func)
-				(* context->prepared_func) (context->pixbuf,
-							    NULL,
-							    context->user_data);
+			(* context->prepared_func) (context->pixbuf,
+						    NULL,
+						    context->user_data);
 		}
 		
 		/* if we got here we're reading image data */
@@ -1029,7 +1038,7 @@ gdk_pixbuf__pnm_image_load_increment (gpointer data,
 				break;
 			} else if (retval == PNM_FATAL_ERR) {
 				return FALSE;
-			} else if (retval == PNM_OK && context->updated_func) {	
+			} else if (retval == PNM_OK) {	
 				/* send updated signal */
 				(* context->updated_func) (context->pixbuf,
 							   0, 
