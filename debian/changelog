@@ -1,3 +1,16 @@
+gdk-pixbuf (2.42.2+dfsg-1+deb11u1) bullseye-security; urgency=high
+
+  * Non-maintainer upload by the Security Team.
+  * gif: Check for overflow when compositing or clearing frames
+    (CVE-2021-46829)
+  * Add an assertion that checks for maximum LZW code size
+  * Fix the check for maximum value of LZW initial code size (CVE-2021-44648)
+    (Closes: #1014600)
+  * Replace GIF in testcase which was broken in the LZW code size, not the
+    values of the pixels
+
+ -- Salvatore Bonaccorso <carnil@debian.org>  Fri, 02 Sep 2022 20:01:56 +0200
+
 gdk-pixbuf (2.42.2+dfsg-1) unstable; urgency=medium
 
   * Team upload

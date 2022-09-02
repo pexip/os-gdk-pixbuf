@@ -15,6 +15,9 @@ endif
 	dh $@ --with gir,gnome
 
 override_dh_auto_configure:
+	# replace GIF in testcase which was broken in the LZW code size, not
+	# the values of the pixels uncovered after fix for CVE-2021-44648
+	cp -a debian/invalid-colors.gif tests/test-images/gif-test-suite/invalid-colors.gif
 	dh_auto_configure -- \
 		$(BUILD_DOCS) \
 		-Dinstalled_tests=true \
