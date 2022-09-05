@@ -1,3 +1,9 @@
+gdk-pixbuf (2.42.2+dfsg-1pexip4) pexip-bullseye; urgency=medium
+
+  * Bullseye rebuild for ARM64 inclusion
+
+ -- Mark Hymers <mark.hymers@pexip.com>  Mon, 05 Sep 2022 10:31:45 +0100
+
 gdk-pixbuf (2.42.2+dfsg-1pexip3) pexip-bullseye; urgency=medium
 
   * Rebuild for override changes
