@@ -1,3 +1,9 @@
+gdk-pixbuf (2.42.2+dfsg-1+deb11u1pexip1) pexip; urgency=medium
+
+  * New upstream release
+
+ -- Mark Hymers <mark.hymers@pexip.com>  Mon, 10 Oct 2022 17:05:27 +0100
+
 gdk-pixbuf (2.42.2+dfsg-1+deb11u1) bullseye-security; urgency=high
 
   * Non-maintainer upload by the Security Team.
