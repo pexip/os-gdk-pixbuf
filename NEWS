@@ -1,3 +1,61 @@
+2.42.10 (stable)
+===
+
+- Search for rst2man.py [!145, Matt Turner]
+- Update the memory size limit for JPEG images [#216, #218]
+- Translation updates
+
+2.42.9 (stable)
+===
+
+- Fix the check for maximum value of LZW initial code size [#136, Robert Ancell]
+- Use CMake for dependencies on Windows/MSVC [!131, Chun-Wei Fan]
+- Add option for building tests [!132]
+- Move man pages to reStructuredText [!134]
+- Disable relocation when built as a static libary on Windows [!136, Hesham Essam]
+- Update wrap file for libjpeg-turbo [!138, Georges Basile Stavracas Neto]
+- Limit the memory size when loading image data [#205, Sam Ezeh]
+
+2.42.8 (stable)
+===
+
+- Clear the pixbuf's memory buffer to avoid returning uninitialized memory [#199]
+- Turn GdkPixbufModule functions into typed callbacks [!123]
+- tiff: Use non-deprecated C99 integer types [!124]
+- gif: Check for overflow when compositing or clearing frames [#190]
+- Change png/jpeg/tiff build options from boolean to feature [!118]
+- jpeg: Do not rely on UB around setjmp/longjmp [#143]
+- Build fixes [!114, #185, #182]
+- Documentation fixes [!120, !125]
+- Translation updates
+
+2.42.6 (stable)
+===
+
+ - Disable shared-mime-info dependency on Android [BogDan Vatra, !104]
+ - Yield gtk_doc option value in subprojects
+ - Always initialise locale on thumbnailer startup [Bastien Nocera, !110]
+ - Add fallback subproject for libjpeg [Benjamin Otte, !109]
+ - Install API reference directly under $datadir/doc/gdk-pixbuf
+ - Use type:array for the builtin_loaders option
+ - Default to using builtin png and jpeg loaders
+ - Replace platform-specific post-install script files with a Python script
+
+2.42.4 (stable)
+===
+
+ - Make enum type registration thread safe
+ - Do not install skipped test files [Jan Tojnar]
+ - Fix GIF initialization [Simon McVittie]
+ - Always run GIF loader tests [Simon McVittie]
+ - Fix leaks discovered via ASan [Simon McVittie]
+ - Expose GdkPixbufLoader API via introspection [Paolo Borelli]
+ - Fix revert-to-previous first frame behaviour for GIF files [Robert Ancell, #166]
+ - Link to libintl if needed [Fabrice Fontaine]
+ - Improve support for using gdk-pixbuf as a subproject [Xavier Claessens]
+ - Fix build with GModule disabled [Fabrice Fontaine]
+ - Use gi-docgen to generate the API reference from introspection data
+
 2.42.2 (stable)
 ===
 
