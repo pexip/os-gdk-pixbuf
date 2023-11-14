@@ -12,10 +12,10 @@ Forwarded: not-needed
  2 files changed, 6 insertions(+), 1 deletion(-)
 
 diff --git a/tests/meson.build b/tests/meson.build
-index ab7ff1e..ff941be 100644
+index 28c2525..c0ecf30 100644
 --- a/tests/meson.build
 +++ b/tests/meson.build
-@@ -134,7 +134,6 @@ test_data = [
+@@ -140,7 +140,6 @@ test_data = [
    'bug143608-comment.jpg',
    'bug725582-testrotate.jpg',
    'bug725582-testrotate.png',
@@ -24,7 +24,7 @@ index ab7ff1e..ff941be 100644
    'large.png',
    'large.jpg',
 diff --git a/tests/pixbuf-jpeg.c b/tests/pixbuf-jpeg.c
-index 3b1f2e4..ffd65f9 100644
+index be2c6b4..7d0ff87 100644
 --- a/tests/pixbuf-jpeg.c
 +++ b/tests/pixbuf-jpeg.c
 @@ -127,6 +127,12 @@ test_at_size (void)

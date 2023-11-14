@@ -16,10 +16,10 @@ Signed-off-by: Simon McVittie <smcv@debian.org>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/tests/meson.build b/tests/meson.build
-index ff941be..6654093 100644
+index c0ecf30..cf58db1 100644
 --- a/tests/meson.build
 +++ b/tests/meson.build
-@@ -73,7 +73,7 @@ installed_tests = {
+@@ -79,7 +79,7 @@ installed_tests = {
    },
    'pixbuf-fail': { 'suites': ['conform', 'slow'], },
    'pixbuf-icon-serialize': { 'suites': ['conform'], },

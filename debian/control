@@ -7,13 +7,11 @@ Section: libs
 Priority: optional
 Maintainer: Pexip AS <packaging@pexip.com>
 XSBC-Pexip-Original-Maintainer: Debian GNOME Maintainers <pkg-gnome-maintainers@lists.alioth.debian.org>
-XSBC-Pexip-Original-Uploaders: Iain Lane <laney@debian.org>, Jeremy Bicha <jbicha@debian.org>, Laurent Bigonville <bigon@debian.org>
-Build-Depends: debhelper-compat (= 12),
-               dh-exec,
-               docbook-xml,
-               docbook-xsl,
-               gnome-pkg-tools (>= 0.10),
-               gobject-introspection (>= 0.9.12-4~),
+XSBC-Pexip-Original-Uploaders: Emilio Pozuelo Monfort <pochu@debian.org>, Iain Lane <laney@debian.org>, Jeremy Bicha <jbicha@ubuntu.com>, Laurent Bigonville <bigon@debian.org>
+Build-Depends: debhelper-compat (= 13),
+               dh-sequence-gir,
+               dh-sequence-gnome,
+               gi-docgen,
                libgirepository1.0-dev (>= 0.9.3),
                libglib2.0-dev (>= 2.56.0),
                libjpeg-dev,
@@ -21,11 +19,11 @@ Build-Depends: debhelper-compat (= 12),
                libpng-dev (>= 1.6),
                libtiff-dev,
                meson (>= 0.55.3),
+               python3-docutils <!nodoc>,
                shared-mime-info (>= 1.2),
-               xsltproc
-Build-Depends-Indep: gtk-doc-tools (>= 1.20) <!nodoc>, libglib2.0-doc <!nodoc>
+               xsltproc <!noudeb>
 Rules-Requires-Root: no
-Standards-Version: 4.5.1
+Standards-Version: 4.6.1
 Homepage: https://www.gtk.org/
 Vcs-Git: https://salsa.debian.org/gnome-team/gdk-pixbuf.git
 Vcs-Browser: https://salsa.debian.org/gnome-team/gdk-pixbuf
@@ -33,7 +31,7 @@ XS-Pexip-Upstream: http://deb.debian.org/debian/ bookworm
 
 Package: libgdk-pixbuf-2.0-0
 Architecture: any
-Depends: libgdk-pixbuf2.0-common (= ${source:Version}),
+Depends: libgdk-pixbuf2.0-common (>= ${source:Version}),
          shared-mime-info,
          ${misc:Depends},
          ${shlibs:Depends}
@@ -79,8 +77,10 @@ Depends: gir1.2-gdkpixbuf-2.0 (= ${binary:Version}),
          libgdk-pixbuf-2.0-0 (= ${binary:Version}),
          libgdk-pixbuf2.0-bin (= ${binary:Version}),
          libglib2.0-dev (>= 2.56.0),
+         libjpeg-dev,
          libpng-dev (<< 1.7),
          libpng-dev (>= 1.6),
+         libtiff-dev,
          shared-mime-info,
          ${misc:Depends},
          ${shlibs:Depends}
@@ -110,6 +110,7 @@ Description: GDK Pixbuf library (documentation)
  in /usr/share/doc/libgtk2.0-doc/ .
 
 Package: libgdk-pixbuf2.0-0-udeb
+Build-Profiles: <!noudeb>
 Package-Type: udeb
 Section: debian-installer
 Architecture: any
@@ -125,6 +126,7 @@ Description: GDK Pixbuf library - minimal runtime
  This transitional package depends on libgdk-pixbuf-2.0-0-udeb.
 
 Package: libgdk-pixbuf-2.0-0-udeb
+Build-Profiles: <!noudeb>
 Package-Type: udeb
 Section: debian-installer
 Architecture: any

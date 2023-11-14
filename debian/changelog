@@ -1,21 +1,108 @@
+gdk-pixbuf (2.42.10+dfsg-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream release
+    - Increase memory limit for JPEGs to 1 GiB
+  * Update standards version to 4.6.1 (no changes needed)
+  * d/upstream/metadata: Update Gitlab URLs
+
+ -- Simon McVittie <smcv@debian.org>  Fri, 18 Nov 2022 19:13:50 +0000
+
+gdk-pixbuf (2.42.9+dfsg-1) unstable; urgency=medium
+
+  * New upstream release
+  * d/rules, d/control.in: Build-depend on python3-docutils for man pages.
+    We no longer need docbook DTDs or stylesheets. We still need xsltproc,
+    but only if we're building the udeb.
+  * d/watch: Update options
+  * d/changelog: Remove trailing whitespace
+  * d/copyright: Stop excluding gi-docgen, no longer in upstream tarballs
+  * d/copyright: Exclude prebuilt documentation when importing tarball
+  * debian/patches/debian_queryloader_dir.patch:
+    Format patch metadata for gbp pq
+  * d/p/tests-Tolerate-either-CORRUPT_IMAGE-or-INSUFFICIENT_MEMOR.patch:
+    Add patch to work around test failures with very large JPEG.
+    Be less demanding about the exact error behaviour, but instead just
+    require there to be an error.
+
+ -- Simon McVittie <smcv@debian.org>  Tue, 16 Aug 2022 11:20:11 +0100
+
+gdk-pixbuf (2.42.8+dfsg-2) unstable; urgency=medium
+
+  * debian/patches/debian_queryloader_dir.patch:
+    - fix the directory referenced for gdk-pixbuf-query-loaders
+      in the .pc since that file is moved by the packaging
+
+ -- Sebastien Bacher <seb128@ubuntu.com>  Wed, 27 Jul 2022 15:23:37 +0200
+
+gdk-pixbuf (2.42.8+dfsg-1) unstable; urgency=medium
+
+  [ Jeremy Bicha ]
+  * New upstream release
+  * debian/control.in: Loosen dependency on libgdk-pixbuf2.0-common.
+    This fixes an issue seen repeatedly in Ubuntu when the amd64 (+all)
+    build finishes and is published before one of the other arches starts
+    to build.
+  * Build-Depend on gi-docgen
+  * Build-Depend on dh-sequence-gir & dh-sequence-gnome
+  * debian/rules: Update configure flags
+  * debian/rules: Drop unneeded -Wl,--as-needed
+  * debian/copyright: Use shorter CC0-1.0 text
+  * debian/rules: Handle over-aggressive dh_fixperms for installed-tests
+
+  [ Simon McVittie ]
+  * Use debhelper compat level 13
+    - We can now use debhelper substitutions for DEB_HOST_MULTIARCH in
+      d/libgdk-pixbuf-2.0-0.install, rather than using dh-exec.
+    - We can now pass `meson test` options to dh_auto_test, which no longer
+      uses `ninja test` directly.
+
+ -- Jeremy Bicha <jbicha@ubuntu.com>  Mon, 28 Mar 2022 15:44:22 -0400
+
+gdk-pixbuf (2.42.6+dfsg-2) unstable; urgency=medium
+
+  * Team upload
+  * Upload to unstable
+
+ -- Simon McVittie <smcv@debian.org>  Sun, 15 Aug 2021 14:39:53 +0100
+
+gdk-pixbuf (2.42.6+dfsg-1) experimental; urgency=medium
+
+  * Team upload
+  * New upstream release
+  * Drop patches that were applied upstream
+  * d/copyright: Exclude pregenerated documentation and fonts from
+    .orig.tar.xz
+  * d/copyright: Use standalone license paragraphs
+  * d/copyright: Update
+  * d/README.source: Describe how to update to a new upstream.
+    This is not quite the same as other GNOME packages because we have to
+    repack the tarball.
+  * Build documentation with gi-docgen
+    - d/p/gi-docgen/Disable-web-fonts-for-now.patch:
+      Disable use of remote or bundled fonts
+    - d/p/gi-docgen/templates-Remove-html5shiv.patch:
+      Disable use of remote html5shiv
+    - d/rules: Use bundled gi-docgen even if it's installed system-wide.
+      Until it's declared stable, the upstream recommendation is to vendor
+      gi-docgen, which means Policy §4.13 allows an embedded code copy.
+  * Build the PNG and JPEG loaders into the library.
+    This matches upstream's recommendation: building these loaders in is
+    one less thing that can go wrong.
+    For the udeb, we previously installed the production library and the
+    PNG loader; now we build a separate library that can only load PNGs.
+    This means the udeb doesn't actually need loadable modules at all.
+    Create an empty loaders.cache file, just to prevent warnings.
+  * d/control: Add -dev dependencies on libjpeg-dev, libtiff-dev.
+    The pkg-config metadata now depends on these.
+
+ -- Simon McVittie <smcv@debian.org>  Wed, 02 Jun 2021 21:29:21 +0100
+
 gdk-pixbuf (2.42.2+dfsg-1+deb11u1pexip1) pexip; urgency=medium
 
   * New upstream release
 
  -- Mark Hymers <mark.hymers@pexip.com>  Mon, 10 Oct 2022 17:05:27 +0100
-
-gdk-pixbuf (2.42.2+dfsg-1+deb11u1) bullseye-security; urgency=high
-
-  * Non-maintainer upload by the Security Team.
-  * gif: Check for overflow when compositing or clearing frames
-    (CVE-2021-46829)
-  * Add an assertion that checks for maximum LZW code size
-  * Fix the check for maximum value of LZW initial code size (CVE-2021-44648)
-    (Closes: #1014600)
-  * Replace GIF in testcase which was broken in the LZW code size, not the
-    values of the pixels
-
- -- Salvatore Bonaccorso <carnil@debian.org>  Fri, 02 Sep 2022 20:01:56 +0200
 
 gdk-pixbuf (2.42.2+dfsg-1pexip4) pexip-bullseye; urgency=medium
 

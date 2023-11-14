@@ -1,11 +1,4 @@
-Make-enum-GType-registration-thread-safe.patch
-tests-Fix-some-memory-leaks.patch
-Update-Romanian-translation.patch
-build-Do-not-install-.test-files-when-test-is-skipped.patch
-gif-Do-all-of-gif_init-with-a-single-read.patch
-tests-Don-t-check-whether-bmp-and-gif-loaders-are-enabled.patch
 Skip-test-for-GNOME-753605.patch
 tests-Mark-pixbuf-randomly-modified-as-flaky.patch
-gif-Check-for-overflow-when-compositing-or-clearing-.patch
-Add-an-assertion-that-checks-for-maximum-LZW-code-si.patch
-Fix-the-check-for-maximum-value-of-LZW-initial-code-.patch
+debian_queryloader_dir.patch
+tests-Tolerate-either-CORRUPT_IMAGE-or-INSUFFICIENT_MEMOR.patch
