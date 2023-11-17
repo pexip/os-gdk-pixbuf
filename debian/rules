@@ -26,7 +26,6 @@ override_dh_auto_configure:
 	dh_auto_configure -- \
 		$(BUILD_DOCS) \
 		-Dtiff=disabled \
-		-Djasper=disabled \
 		-Dauto_features=enabled
 		-Dinstalled_tests=true \
 		-Dintrospection=enabled \
