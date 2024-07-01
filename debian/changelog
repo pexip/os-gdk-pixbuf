@@ -4,6 +4,15 @@ gdk-pixbuf (2.42.10+dfsg-1+pexip24u3) pexip-bookworm; urgency=medium
 
  -- Mark Hymers <mark.hymers@pexip.com>  Thu, 01 Feb 2024 15:58:42 +0000
 
+gdk-pixbuf (2.42.10+dfsg-1+deb12u1) bookworm; urgency=medium
+
+  * ANI: Reject files with multiple anih chunks (CVE-2022-48622)
+    (Closes: #1071265)
+  * ANI: Reject files with multiple INAM or IART chunks
+  * ANI: Validate anih chunk size
+
+ -- Salvatore Bonaccorso <carnil@debian.org>  Thu, 13 Jun 2024 23:04:36 +0200
+
 gdk-pixbuf (2.42.10+dfsg-1pexip2) pexip-bookworm; urgency=medium
 
   * Bookworm build for product distribution

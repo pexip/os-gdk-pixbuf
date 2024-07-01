@@ -1,0 +1,41 @@
+From: Benjamin Gilbert <bgilbert@backtick.net>
+Date: Tue, 30 Apr 2024 07:26:54 -0500
+Subject: ANI: Reject files with multiple anih chunks
+Origin: https://gitlab.gnome.org/GNOME/gdk-pixbuf/-/commit/00c071dd11f723ca608608eef45cb1aa98da89cc
+Bug-Debian: https://bugs.debian.org/1071265
+Bug-Debian-Security: https://security-tracker.debian.org/tracker/CVE-2022-48622
+
+An anih chunk causes us to initialize a bunch of state, which we only
+expect to do once per file.
+
+Fixes: #202
+Fixes: CVE-2022-48622
+---
+ gdk-pixbuf/io-ani.c                       |   9 +++++++++
+ tests/test-images/fail/CVE-2022-48622.ani | Bin 0 -> 28012 bytes
+ 2 files changed, 9 insertions(+)
+ create mode 100644 tests/test-images/fail/CVE-2022-48622.ani
+
+diff --git a/gdk-pixbuf/io-ani.c b/gdk-pixbuf/io-ani.c
+index c6c4642cf449..a78ea7ace40b 100644
+--- a/gdk-pixbuf/io-ani.c
++++ b/gdk-pixbuf/io-ani.c
+@@ -295,6 +295,15 @@ ani_load_chunk (AniLoaderContext *context, GError **error)
+         
+         if (context->chunk_id == TAG_anih) 
+ 	{
++		if (context->animation)
++		{
++			g_set_error_literal (error,
++                                             GDK_PIXBUF_ERROR,
++                                             GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
++                                             _("Invalid header in animation"));
++			return FALSE;
++		}
++
+ 		context->HeaderSize = read_int32 (context);
+ 		context->NumFrames = read_int32 (context);
+ 		context->NumSteps = read_int32 (context);
+-- 
+2.45.1
+
