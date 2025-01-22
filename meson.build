@@ -1,5 +1,5 @@
 project('gdk-pixbuf', 'c',
-  version: '2.42.10',
+  version: '2.42.12',
   license: 'LGPL-2.1-or-later',
   default_options: [
     'buildtype=debugoptimized',
@@ -273,6 +273,27 @@ if not png_opt.disabled()
     enabled_loaders += 'png'
     loaders_deps += png_dep
   endif
+endif
+
+gif_opt = get_option('gif')
+if not gif_opt.disabled()
+  enabled_loaders += 'gif'
+endif
+
+others_opt = get_option('others')
+if not others_opt.disabled()
+  # Keep sorted alphabetically
+  enabled_loaders += [
+    'ani',
+    'bmp',
+    'icns',
+    'ico',
+    'pnm',
+    'qtif',
+    'tga',
+    'xbm',
+    'xpm',
+  ]
 endif
 
 # On Windows, check whether we are building the native Windows loaders
