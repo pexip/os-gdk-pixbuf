@@ -29,6 +29,7 @@ override_dh_auto_configure:
 		-Dauto_features=enabled
 		-Dinstalled_tests=true \
 		-Dintrospection=enabled \
+		-Dothers=enabled \
 		$(NULL)
 ifneq ($(filter %-udeb,$(built_binaries)),)
 	dh_auto_configure \
@@ -41,6 +42,7 @@ ifneq ($(filter %-udeb,$(built_binaries)),)
 		-Dpng=enabled \
 		-Dtiff=disabled \
 		-Djpeg=disabled \
+		-Dothers=disabled \
 		-Dman=false \
 		$(NULL)
 endif
@@ -117,6 +119,9 @@ override_dh_clean:
 		rm -f debian/$$file; \
 	done
 	rm -rf $(mimedir)
+
+override_dh_gnome_clean:
+	dh_gnome_clean --no-control
 
 override_dh_builddeb:
 	# on Ubuntu PNGs are optimised using 'optipng', but the (installed)

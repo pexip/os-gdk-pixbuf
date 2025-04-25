@@ -1,3 +1,74 @@
+gdk-pixbuf (2.42.12+dfsg-2) unstable; urgency=medium
+
+  [ Simon McVittie ]
+  * d/control: Remove some redundant dependencies
+  * Standards-Version: 4.7.0 (no changes required)
+  * libgdk-pixbuf2.0-doc: Register the reference manuals with doc-base
+
+  [ Jeremy Bícha ]
+  * Drop obsolete Pre-Depends
+  * Run wrap-and-sort
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Wed, 22 Jan 2025 08:21:30 -0500
+
+gdk-pixbuf (2.42.12+dfsg-1) unstable; urgency=high
+
+  * Team upload
+  * New upstream release
+    - Reject malformed .ani files, including one category that can cause
+      memory corruption (CVE-2022-48622)
+  * d/rules: Keep .ani, .bmp, .icns, .ico, .pnm, .qtif, .tga, .xbm, .xpm
+    loaders enabled for now. They are weakly maintained, and no longer
+    enabled by default upstream to reduce security exposure, but disabling
+    them would be a feature regression, which we shouldn't do in the same
+    upload as a security fix.
+  * d/rules: Disable miscellaneous loaders for the udeb, which as far as
+    we know only needs PNG support
+  * d/copyright: Pre-generated HTML documentation no longer needs excluding
+  * Set high urgency for security fix
+
+ -- Simon McVittie <smcv@debian.org>  Thu, 16 May 2024 15:25:37 +0100
+
+gdk-pixbuf (2.42.10+dfsg-3) unstable; urgency=medium
+
+  * Team upload
+  * d/control, d/rules: Reinstate dh-sequence-gnome, but disable
+    control.in.
+    Ubuntu uses this sequence to pull in the Ubuntu-specific
+    dh_translations.
+  * d/control: Add ${gir:Depends} to -dev package
+  * d/control: Use ${gir:Provides} instead of hard-coding it.
+    gobject-introspection (>= 1.78.1-5~) generates this for us.
+
+ -- Simon McVittie <smcv@debian.org>  Tue, 14 Nov 2023 10:02:24 +0000
+
+gdk-pixbuf (2.42.10+dfsg-2) unstable; urgency=medium
+
+  * Team upload
+
+  [ Amin Bandali ]
+  * Change packaging branch to debian/latest
+
+  [ Simon McVittie ]
+  * d/clean: Clean up debian/tmp-udeb/, obj-udeb/ (Closes: #1045013)
+  * d/rules: Fix escaped newline.
+    No functional change, because the options after the incorrect newline
+    were explicitly setting default behaviour anyway.
+  * d/.gitignore: Add
+  * d/control: Stop generating from a template.
+    We don't use any of the other dh-sequence-gnome features (there are no
+    libtool archives, and we don't use the gnome:Foo family of substvars)
+    so drop the build-dependency on dh-sequence-gnome.
+  * d/control: Add Provides on gir1.2-*-dev package names.
+    Adding versioned Provides on gir1.2-*-dev corresponding to each GIR XML
+    file is a small step towards being able to exclude GObject-Introspection
+    with a build-profile when cross-compiling.
+    (Helps: #1030223)
+  * Remove version constraints unnecessary since bullseye (oldstable)
+  * Update standards version to 4.6.2, no changes needed.
+
+ -- Simon McVittie <smcv@debian.org>  Wed, 01 Nov 2023 23:29:20 +0000
+
 gdk-pixbuf (2.42.10+dfsg-1+pexip24u4+deb12u1) pexip; urgency=medium
 
   * New upstream release
@@ -9,15 +80,6 @@ gdk-pixbuf (2.42.10+dfsg-1+pexip24u3) pexip-bookworm; urgency=medium
   * New versioning scheme
 
  -- Mark Hymers <mark.hymers@pexip.com>  Thu, 01 Feb 2024 15:58:42 +0000
-
-gdk-pixbuf (2.42.10+dfsg-1+deb12u1) bookworm; urgency=medium
-
-  * ANI: Reject files with multiple anih chunks (CVE-2022-48622)
-    (Closes: #1071265)
-  * ANI: Reject files with multiple INAM or IART chunks
-  * ANI: Validate anih chunk size
-
- -- Salvatore Bonaccorso <carnil@debian.org>  Thu, 13 Jun 2024 23:04:36 +0200
 
 gdk-pixbuf (2.42.10+dfsg-1pexip2) pexip-bookworm; urgency=medium
 
