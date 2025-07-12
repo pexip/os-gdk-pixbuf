@@ -2,3 +2,5 @@ Skip-test-for-GNOME-753605.patch
 tests-Mark-pixbuf-randomly-modified-as-flaky.patch
 debian_queryloader_dir.patch
 tests-Tolerate-either-CORRUPT_IMAGE-or-INSUFFICIENT_MEMOR.patch
+lzw-Fix-reporting-of-bytes-written-in-decoder.patch
+jpeg-Be-more-careful-with-chunked-icc-data.patch
