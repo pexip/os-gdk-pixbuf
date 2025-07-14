@@ -1,3 +1,9 @@
+gdk-pixbuf (2.42.10+dfsg-1+deb12u2) bookworm-security; urgency=medium
+
+  * CVE-2025-6199 (Closes: #1107994)
+
+ -- Moritz Mühlenhoff <jmm@debian.org>  Thu, 19 Jun 2025 22:52:54 +0200
+
 gdk-pixbuf (2.42.10+dfsg-1+pexip24u5+deb12u1) pexip; urgency=medium
 
   * Backport CVE fix from upstream:

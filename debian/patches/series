@@ -5,4 +5,4 @@ tests-Tolerate-either-CORRUPT_IMAGE-or-INSUFFICIENT_MEMOR.patch
 ANI-Reject-files-with-multiple-anih-chunks.patch
 ANI-Reject-files-with-multiple-INAM-or-IART-chunks.patch
 ANI-Validate-anih-chunk-size.patch
-CVE-2025-6199-lzw_Fix_reporting_of_bytes.patch
+CVE-2025-6199.patch
