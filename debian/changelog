@@ -1,3 +1,9 @@
+gdk-pixbuf (2.42.10+dfsg-1+pexip24u5+deb12u2) pexip; urgency=medium
+
+  * New upstream release
+
+ -- Huw Jones <huw@pexip.com>  Mon, 14 Jul 2025 14:25:52 +0100
+
 gdk-pixbuf (2.42.10+dfsg-1+deb12u2) bookworm-security; urgency=medium
 
   * CVE-2025-6199 (Closes: #1107994)
