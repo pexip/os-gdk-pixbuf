@@ -1,3 +1,9 @@
+gdk-pixbuf (2.42.12+dfsg-4+pexip25u1) pexip-trixie; urgency=medium
+
+  * New upstream release
+
+ -- Mark Hymers <mark.hymers@pexip.com>  Thu, 31 Jul 2025 13:18:04 +0100
+
 gdk-pixbuf (2.42.12+dfsg-4) unstable; urgency=high
 
   * Team upload
