@@ -1,0 +1,15 @@
+---
+include:
+  - https://salsa.debian.org/salsa-ci-team/pipeline/raw/master/salsa-ci.yml
+  - https://salsa.debian.org/salsa-ci-team/pipeline/raw/master/pipeline-jobs.yml
+
+variables:
+  RELEASE: 'bookworm'
+  # crossbuild is only supported for unstable
+  SALSA_CI_DISABLE_CROSSBUILD_ARM64: 1
+  # the udeb intentionally has this, but udebs can't have overrides
+  SALSA_CI_LINTIAN_SUPPRESS_TAGS: 'package-contains-mime-cache-file'
+  # pixbuf-fail test only fail in salsa-ci, so skip testing when building
+  DEB_BUILD_OPTIONS: nocheck
+  # And tell autopkgtest we are building in salsa-ci so it is marked as flaky
+  SALSA_CI_AUTOPKGTEST_ARGS: "--env SALSA_CI=true"

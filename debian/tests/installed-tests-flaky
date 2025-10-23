@@ -1,9 +1,19 @@
 #!/bin/sh
 
-set -eu
+set -e
 
+if [ -n "$SALSA_CI" ]; then
+    # pixbuf-fail triggers oom-killer in salsa-ci
+    flaky_tests="gdk-pixbuf/pixbuf-randomly-modified.test \
+            gdk-pixbuf/pixbuf-fail.test"
+else
+    flaky_tests="gdk-pixbuf/pixbuf-randomly-modified.test"
+fi
+
+# Deliberately word-splitting:
+# shellcheck disable=SC2086
 exec gnome-desktop-testing-runner \
 --report-directory="$AUTOPKGTEST_ARTIFACTS" \
 --tap \
-gdk-pixbuf/pixbuf-randomly-modified.test \
+$flaky_tests \
 ${NULL+}
