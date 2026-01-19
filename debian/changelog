@@ -1,3 +1,29 @@
+gdk-pixbuf (2.42.10+dfsg-1+pexip24u6+deb12u3) pexip; urgency=medium
+
+  * New upstream release with security fixes
+
+ -- Steve McIntyre <steve.mcintyre@pexip.com>  Mon, 19 Jan 2026 16:53:00 +0000
+
+gdk-pixbuf (2.42.10+dfsg-1+deb12u3) bookworm; urgency=medium
+
+  * Team upload.
+
+  [ Jeremy Bícha ]
+  * debian/gbp.conf: Branch for bookworm.
+
+  [ Carlos Henrique Lima Melara ]
+  * debian/patches/CVE-2025-7345.patch: import patch from upstream.
+      - CVE-2025-7345: A flaw exists in gdk‑pixbuf within the
+        gdk_pixbuf__jpeg_image_load_increment function (io-jpeg.c) and in
+        glib’s g_base64_encode_step (glib/gbase64.c) potentially leading to a
+        buffer overflow. (Closes: #1109262)
+  * debian/salsa-ci.yml: build with nocheck and pass SALSA_CI=true for
+    autopkgtest job.
+  * debian/tests/installed-tests{,flaky}: check SALSA_CI variable to decide
+    what is flaky or not.
+
+ -- Carlos Henrique Lima Melara <charlesmelara@riseup.net>  Wed, 22 Oct 2025 22:45:57 -0300
+
 gdk-pixbuf (2.42.10+dfsg-1+pexip24u5+deb12u2) pexip; urgency=medium
 
   * New upstream release

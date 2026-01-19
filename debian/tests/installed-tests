@@ -1,6 +1,13 @@
 #!/bin/sh
 
-set -eu
+set -e
+
+if [ -n "$SALSA_CI" ]; then
+    # pixbuf-fail triggers oom-killer in salsa-ci
+    flaky_tests_regex='^gdk-pixbuf/pixbuf-\(randomly-modified\|fail\)\.test$'
+else
+    flaky_tests_regex='^gdk-pixbuf/pixbuf-randomly-modified\.test$'
+fi
 
 namespace=gdk-pixbuf/
 
@@ -9,7 +16,7 @@ namespace=gdk-pixbuf/
 set -- $(
     gnome-desktop-testing-runner -l "$namespace" |
     cut -f1 -d' ' |
-    grep -v '^gdk-pixbuf/pixbuf-randomly-modified\.test$'
+    grep -v "$flaky_tests_regex"
 )
 
 if [ -z "$*" ]; then
