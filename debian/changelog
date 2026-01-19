@@ -1,3 +1,9 @@
+gdk-pixbuf (2.42.10+dfsg-1+pexip24u7+deb12u3) pexip; urgency=medium
+
+  * Fix up broken changelog
+
+ -- Steve McIntyre <steve.mcintyre@pexip.com>  Mon, 19 Jan 2026 17:04:31 +0000
+
 gdk-pixbuf (2.42.10+dfsg-1+pexip24u6+deb12u3) pexip; urgency=medium
 
   * New upstream release with security fixes
