@@ -1,3 +1,11 @@
+gdk-pixbuf (2.42.12+dfsg-4+deb13u1) trixie-security; urgency=high
+
+  * Non-maintainer upload by the Security Team.
+  * jpeg: Reject unsupported number of components (CVE-2026-5201)
+    (Closes: #1132501)
+
+ -- Salvatore Bonaccorso <carnil@debian.org>  Sat, 04 Apr 2026 22:42:18 +0200
+
 gdk-pixbuf (2.42.12+dfsg-4) unstable; urgency=high
 
   * Team upload

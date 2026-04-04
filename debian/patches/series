@@ -4,3 +4,4 @@ debian_queryloader_dir.patch
 tests-Tolerate-either-CORRUPT_IMAGE-or-INSUFFICIENT_MEMOR.patch
 lzw-Fix-reporting-of-bytes-written-in-decoder.patch
 jpeg-Be-more-careful-with-chunked-icc-data.patch
+jpeg-Reject-unsupported-number-of-components.patch
